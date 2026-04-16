@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe">
+  <NFe xmlns="http://www.portalfiscal.inf.br/nfe">
+    <infNFe Id="NFe11222333000181202604160001">
+      <ide>
+        <cUF>35</cUF>
+        <nNF>5</nNF>
+        <dhEmi>2026-04-16T09:50:00-03:00</dhEmi>
+      </ide>
+      <emit>
+        <CNPJ>11222333000181</CNPJ>
+        <xNome>Gama Postos e Lubrificantes ME</xNome>
+        <enderEmit>
+          <xLgr>Rua Comercial</xLgr>
+          <nro>77</nro>
+          <xMun>Ribeirão Preto</xMun>
+          <UF>SP</UF>
+        </enderEmit>
+      </emit>
+      <det nItem="1">
+        <prod>
+          <cProd>ARLA32</cProd>
+          <xProd>ARLA 32 20L</xProd>
+          <qCom>200.0000</qCom>
+          <vProd>730.00</vProd>
+          <vDesc>0.00</vDesc>
+        </prod>
+      </det>
+      <det nItem="2">
+        <prod>
+          <cProd>GASOLINA-C</cProd>
+          <xProd>GASOLINA COMUM</xProd>
+          <qCom>750.0000</qCom>
+          <vProd>4425.00</vProd>
+          <vDesc>0.00</vDesc>
+        </prod>
+      </det>
+    </infNFe>
+  </NFe>
+</nfeProc>

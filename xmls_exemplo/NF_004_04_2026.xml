@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe">
+  <NFe xmlns="http://www.portalfiscal.inf.br/nfe">
+    <infNFe Id="NFe98765432000100202604160002">
+      <ide>
+        <cUF>35</cUF>
+        <nNF>4</nNF>
+        <dhEmi>2026-04-16T09:30:00-03:00</dhEmi>
+      </ide>
+      <emit>
+        <CNPJ>98765432000100</CNPJ>
+        <xNome>Petro Beta Distribuidora S.A.</xNome>
+        <enderEmit>
+          <xLgr>Av. Petroleo</xLgr>
+          <nro>500</nro>
+          <xMun>Campinas</xMun>
+          <UF>SP</UF>
+        </enderEmit>
+      </emit>
+      <det nItem="1">
+        <prod>
+          <cProd>DIESEL-S10</cProd>
+          <xProd>DIESEL S10</xProd>
+          <qCom>500.0000</qCom>
+          <vProd>3250.00</vProd>
+          <vDesc>0.00</vDesc>
+        </prod>
+      </det>
+      <det nItem="2">
+        <prod>
+          <cProd>ARLA32</cProd>
+          <xProd>ARLA 32 20L</xProd>
+          <qCom>150.0000</qCom>
+          <vProd>525.00</vProd>
+          <vDesc>0.00</vDesc>
+        </prod>
+      </det>
+    </infNFe>
+  </NFe>
+</nfeProc>

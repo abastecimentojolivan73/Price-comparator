@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe">
+  <NFe xmlns="http://www.portalfiscal.inf.br/nfe">
+    <infNFe Id="NFe12345678000195202604160002">
+      <ide>
+        <cUF>35</cUF>
+        <nNF>2</nNF>
+        <dhEmi>2026-04-16T08:20:00-03:00</dhEmi>
+      </ide>
+      <emit>
+        <CNPJ>12345678000195</CNPJ>
+        <xNome>Distribuidora Alpha Combustiveis Ltda</xNome>
+        <enderEmit>
+          <xLgr>Rua das Industrias</xLgr>
+          <nro>100</nro>
+          <xMun>São Paulo</xMun>
+          <UF>SP</UF>
+        </enderEmit>
+      </emit>
+      <det nItem="1">
+        <prod>
+          <cProd>GASOLINA-A</cProd>
+          <xProd>GASOLINA ADITIVADA</xProd>
+          <qCom>200.0000</qCom>
+          <vProd>1140.00</vProd>
+          <vDesc>0.00</vDesc>
+        </prod>
+      </det>
+      <det nItem="2">
+        <prod>
+          <cProd>GASOLINA-C</cProd>
+          <xProd>GASOLINA COMUM</xProd>
+          <qCom>400.0000</qCom>
+          <vProd>2312.00</vProd>
+          <vDesc>0.00</vDesc>
+        </prod>
+      </det>
+    </infNFe>
+  </NFe>
+</nfeProc>

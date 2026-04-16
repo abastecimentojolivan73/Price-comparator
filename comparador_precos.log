@@ -1,0 +1,11 @@
+2026-04-16 11:16:16,518 [INFO] utils.helpers: Logging inicializado. Arquivo: comparador_precos.log
+2026-04-16 11:16:16,518 [INFO] core.database: Inicializando banco de dados: /home/runner/workspace/comparador_precos/comparador_precos.db
+2026-04-16 11:16:16,546 [INFO] core.database: Banco de dados inicializado com sucesso.
+2026-04-16 11:18:19,755 [INFO] utils.helpers: Logging inicializado. Arquivo: comparador_precos.log
+2026-04-16 11:18:19,756 [INFO] core.database: Inicializando banco de dados: /home/runner/workspace/comparador_precos/comparador_precos.db
+2026-04-16 11:18:19,768 [INFO] core.database: Banco de dados inicializado com sucesso.
+2026-04-16 11:18:33,107 [INFO] utils.helpers: Logging inicializado. Arquivo: comparador_precos.log
+2026-04-16 11:18:33,108 [INFO] core.database: Inicializando banco de dados: /home/runner/workspace/comparador_precos/comparador_precos.db
+2026-04-16 11:18:33,113 [INFO] core.database: Banco de dados inicializado com sucesso.
+2026-04-16 11:18:34,666 [INFO] core.reports: Excel exportado: outputs/teste_relatorio.xlsx (15 linhas)
+2026-04-16 11:18:34,675 [INFO] core.reports: PDF exportado: outputs/teste_relatorio.pdf (15 linhas)

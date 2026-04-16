@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe">
+  <NFe xmlns="http://www.portalfiscal.inf.br/nfe">
+    <infNFe Id="NFe11222333000181202604160002">
+      <ide>
+        <cUF>35</cUF>
+        <nNF>7</nNF>
+        <dhEmi>2026-04-16T10:50:00-03:00</dhEmi>
+      </ide>
+      <emit>
+        <CNPJ>11222333000181</CNPJ>
+        <xNome>Gama Postos e Lubrificantes ME</xNome>
+        <enderEmit>
+          <xLgr>Rua Comercial</xLgr>
+          <nro>77</nro>
+          <xMun>Ribeirão Preto</xMun>
+          <UF>SP</UF>
+        </enderEmit>
+      </emit>
+      <det nItem="1">
+        <prod>
+          <cProd>GNV</cProd>
+          <xProd>GNV COMPRIMIDO</xProd>
+          <qCom>300.0000</qCom>
+          <vProd>1248.00</vProd>
+          <vDesc>0.00</vDesc>
+        </prod>
+      </det>
+    </infNFe>
+  </NFe>
+</nfeProc>

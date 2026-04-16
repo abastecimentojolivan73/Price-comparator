@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe">
+  <NFe xmlns="http://www.portalfiscal.inf.br/nfe">
+    <infNFe>
+      <emit>
+        <CNPJ>12345678000195</CNPJ>
+        <xNome>Fornecedor Exemplo Ltda</xNome>
+      </emit>
+      <det nItem="1">
+        <prod>
+          <cProd>PROD001</cProd>
+          <xProd>GASOLINA COMUM</xProd>
+          <qCom>100.0000</qCom>
+          <vProd>580.00</vProd>
+          <vDesc>0.00</vDesc>
+        </prod>
+      </det>
+      <det nItem="2">
+        <prod>
+          <cProd>PROD002</cProd>
+          <xProd>DIESEL S10</xProd>
+          <qCom>200.0000</qCom>
+          <vProd>1060.00</vProd>
+          <vDesc>10.00</vDesc>
+        </prod>
+      </det>
+    </infNFe>
+  </NFe>
+</nfeProc>

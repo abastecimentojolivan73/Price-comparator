@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<nfeProc xmlns="http://www.portalfiscal.inf.br/nfe">
+  <NFe xmlns="http://www.portalfiscal.inf.br/nfe">
+    <infNFe Id="NFe98765432000100202604160003">
+      <ide>
+        <cUF>35</cUF>
+        <nNF>6</nNF>
+        <dhEmi>2026-04-16T10:20:00-03:00</dhEmi>
+      </ide>
+      <emit>
+        <CNPJ>98765432000100</CNPJ>
+        <xNome>Petro Beta Distribuidora S.A.</xNome>
+        <enderEmit>
+          <xLgr>Av. Petroleo</xLgr>
+          <nro>500</nro>
+          <xMun>Campinas</xMun>
+          <UF>SP</UF>
+        </enderEmit>
+      </emit>
+      <det nItem="1">
+        <prod>
+          <cProd>DIESEL-S500</cProd>
+          <xProd>DIESEL S500</xProd>
+          <qCom>400.0000</qCom>
+          <vProd>2452.00</vProd>
+          <vDesc>0.00</vDesc>
+        </prod>
+      </det>
+      <det nItem="2">
+        <prod>
+          <cProd>ETANOL</cProd>
+          <xProd>ETANOL HIDRATADO</xProd>
+          <qCom>500.0000</qCom>
+          <vProd>2200.00</vProd>
+          <vDesc>0.00</vDesc>
+        </prod>
+      </det>
+    </infNFe>
+  </NFe>
+</nfeProc>
