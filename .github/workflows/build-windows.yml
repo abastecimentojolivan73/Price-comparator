@@ -1,0 +1,59 @@
+name: Build Windows EXE
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'comparador_precos/**'
+  workflow_dispatch:  # permite rodar manualmente pelo botão no GitHub
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Instalar dependências
+        working-directory: comparador_precos
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller customtkinter lxml openpyxl fpdf2 requests
+
+      - name: Compilar com PyInstaller
+        working-directory: comparador_precos
+        run: |
+          pyinstaller `
+            --onefile `
+            --windowed `
+            --name="ComparadorPrecos" `
+            --collect-all customtkinter `
+            --hidden-import=core `
+            --hidden-import=core.database `
+            --hidden-import=core.api_service `
+            --hidden-import=core.xml_processor `
+            --hidden-import=core.comparator `
+            --hidden-import=core.reports `
+            --hidden-import=ui `
+            --hidden-import=ui.app `
+            --hidden-import=utils `
+            --hidden-import=utils.helpers `
+            --hidden-import=lxml `
+            --hidden-import=lxml.etree `
+            --hidden-import=openpyxl `
+            --hidden-import=fpdf `
+            --hidden-import=requests `
+            main.py
+
+      - name: Upload do executável como artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ComparadorPrecos-Windows
+          path: comparador_precos/dist/ComparadorPrecos.exe
+          retention-days: 30
