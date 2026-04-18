@@ -54,14 +54,7 @@ def fetch_and_cache_prices(api_url: str, api_token: str) -> tuple[int, list[str]
         try:
             raw_cnpj = str(item.get("cnpj", "")).strip()
             # Tenta 'preço' ou 'preco' ou 'preco_referencia'
-            raw_preco = item.get("preço", item.get("preco", item.get("preco_referencia", 0)))
-            
-            # Limpeza do preço se for string (ex: "R$ 6,39")
-            if isinstance(raw_preco, str):
-                cleaned_preco = raw_preco.replace("R$", "").replace(" ", "").replace(".", "").replace(",", ".").strip()
-                preco = float(cleaned_preco)
-            else:
-                preco = float(raw_preco)
+            preco = float(item.get("preço", item.get("preco", item.get("preco_referencia", 0))))
             
             if not raw_cnpj:
                 errors.append(f"Item sem cnpj ignorado: {item}")
