@@ -40,11 +40,9 @@ def init_db():
 
             CREATE TABLE IF NOT EXISTS cache_precos_api (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                cnpj TEXT NOT NULL,
-                codigo_produto TEXT NOT NULL,
+                codigo_produto TEXT NOT NULL UNIQUE,
                 preco_referencia REAL NOT NULL,
-                data_atualizacao TEXT NOT NULL,
-                UNIQUE(cnpj, codigo_produto)
+                data_atualizacao TEXT NOT NULL
             );
 
             CREATE TABLE IF NOT EXISTS resultados (
@@ -138,34 +136,34 @@ def get_tolerancia(cnpj: str, codigo_produto: str) -> dict | None:
 
 # ─── cache_precos_api CRUD ───────────────────────────────────────────────────
 
-def upsert_preco_api(cnpj: str, codigo_produto: str, preco_referencia: float, data_atualizacao: str) -> bool:
-    """Insere ou atualiza o preço de referência de um produto/fornecedor no cache."""
+def upsert_preco_api(codigo_produto: str, preco_referencia: float, data_atualizacao: str) -> bool:
+    """Insere ou atualiza o preço de referência de um produto no cache."""
     try:
         with get_connection() as conn:
             conn.execute("""
-                INSERT INTO cache_precos_api (cnpj, codigo_produto, preco_referencia, data_atualizacao)
-                VALUES (?, ?, ?, ?)
-                ON CONFLICT(cnpj, codigo_produto) DO UPDATE SET
+                INSERT INTO cache_precos_api (codigo_produto, preco_referencia, data_atualizacao)
+                VALUES (?, ?, ?)
+                ON CONFLICT(codigo_produto) DO UPDATE SET
                     preco_referencia = excluded.preco_referencia,
                     data_atualizacao = excluded.data_atualizacao
-            """, (cnpj, codigo_produto, preco_referencia, data_atualizacao))
+            """, (codigo_produto, preco_referencia, data_atualizacao))
         return True
     except Exception as e:
-        logger.error("Erro ao salvar cache_precos_api cnpj=%s produto=%s: %s", cnpj, codigo_produto, e)
+        logger.error("Erro ao salvar cache_precos_api produto=%s: %s", codigo_produto, e)
         return False
 
 
-def get_preco_api(cnpj: str, codigo_produto: str) -> dict | None:
-    """Busca o preço de referência de um produto/fornecedor no cache local. Retorna None se ausente."""
+def get_preco_api(codigo_produto: str) -> dict | None:
+    """Busca o preço de referência de um produto no cache local. Retorna None se ausente."""
     try:
         with get_connection() as conn:
             row = conn.execute(
-                "SELECT * FROM cache_precos_api WHERE cnpj = ? AND codigo_produto = ?",
-                (cnpj, codigo_produto)
+                "SELECT * FROM cache_precos_api WHERE codigo_produto = ?",
+                (codigo_produto,)
             ).fetchone()
         return dict(row) if row else None
     except Exception as e:
-        logger.error("Erro ao buscar cache cnpj=%s produto=%s: %s", cnpj, codigo_produto, e)
+        logger.error("Erro ao buscar cache produto=%s: %s", codigo_produto, e)
         return None
 
 
@@ -174,7 +172,7 @@ def list_cache_precos() -> list:
     try:
         with get_connection() as conn:
             rows = conn.execute(
-                "SELECT * FROM cache_precos_api ORDER BY cnpj, codigo_produto"
+                "SELECT * FROM cache_precos_api ORDER BY codigo_produto"
             ).fetchall()
         return [dict(r) for r in rows]
     except Exception as e:
