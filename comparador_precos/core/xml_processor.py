@@ -74,7 +74,7 @@ def parse_nfe_file(filepath: str) -> tuple[dict | None, list]:
 
         # CNPJ do emitente
         cnpj_el = nfe_node.find(".//nfe:emit/nfe:CNPJ", ns)
-        cnpj_emitente = safe_str(cnpj_el.text if cnpj_el is not None else "")
+        cnpj_emitente = clean_cnpj(safe_str(cnpj_el.text if cnpj_el is not None else ""))
 
         if not cnpj_emitente:
             erros.append(f"CNPJ do emitente não encontrado em '{os.path.basename(filepath)}'")

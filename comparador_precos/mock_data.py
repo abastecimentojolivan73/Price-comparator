@@ -23,6 +23,8 @@ print("Limpando resultados anteriores...")
 clear_resultados()
 
 # ─── Preços de referência (cache_precos_api) ──────────────────────────────────
+# Agora associamos a um CNPJ (ex: Distribuidora Alpha 12345678000195)
+MOCK_CNPJ = "12345678000195"
 precos_api = [
     ("GASOLINA-C",  5.79),
     ("GASOLINA-A",  5.49),
@@ -35,8 +37,8 @@ precos_api = [
 
 print("Inserindo preços de referência...")
 for cod, preco in precos_api:
-    upsert_preco_api(cod, preco, "16/04/2026 10:00:00")
-    print(f"  {cod}: R$ {preco:.4f}")
+    upsert_preco_api(MOCK_CNPJ, cod, preco, "16/04/2026 10:00:00")
+    print(f"  CNPJ {MOCK_CNPJ} | {cod}: R$ {preco:.4f}")
 
 # ─── Configurações de fornecedores (config_fornecedores) ──────────────────────
 configs = [

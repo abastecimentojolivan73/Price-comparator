@@ -376,7 +376,7 @@ class ComparadorApp(ctk.CTk):
 
                 cnpj = nfe_data["cnpj_emitente"]
                 for item in nfe_data["itens"]:
-                    preco_api = get_price_from_cache(item["codigo_produto"]) or 0.0
+                    preco_api = get_price_from_cache(cnpj, item["codigo_produto"]) or 0.0
                     row = build_result_row(filename, cnpj, item, preco_api, data_proc)
                     insert_resultado(row)
                     results.append(row)

@@ -72,3 +72,10 @@ def safe_str(value, default: str = "") -> str:
 def ensure_dir(path: str):
     """Cria o diretório se não existir."""
     os.makedirs(path, exist_ok=True)
+
+
+def clean_cnpj(cnpj: str) -> str:
+    """Remove pontuação de um CNPJ e retorna apenas números."""
+    if not cnpj:
+        return ""
+    return "".join(filter(str.isdigit, cnpj))
