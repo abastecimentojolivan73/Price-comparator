@@ -14,6 +14,12 @@ logger = get_logger(__name__)
 
 SUPPORTED_FUEL_TYPES = {"diesel", "arla"}
 DEFAULT_NAME_MATCH_THRESHOLD = 0.72
+GENERIC_STATION_TOKENS = {
+    "AUTO", "POSTO", "REDE", "COMERCIO", "COMERCIAL", "COMBUSTIVEIS",
+    "COMBUSTIVEL", "DERIVADOS", "DISTRIBUIDORA", "DISTRIBUIDOR", "PETROLEO",
+    "SERVICOS", "SERVICO", "LTDA", "LTD", "EIRELI", "ME", "EPP", "SA", "S", "A",
+    "FILIAL", "MATRIZ", "UNIDADE",
+}
 
 
 def normalize_api_payload(payload, tipo: str) -> tuple[list[dict], list[str]]:
@@ -40,7 +46,7 @@ def normalize_api_payload(payload, tipo: str) -> tuple[list[dict], list[str]]:
                 "estado": _normalize_text(raw_item.get("estado")),
                 "cidade": _normalize_text(raw_item.get("cidade")),
                 "posto": safe_str(raw_item.get("posto")),
-                "posto_normalizado": _normalize_text(raw_item.get("posto")),
+                "posto_normalizado": _normalize_station_name(raw_item.get("posto")),
                 "uf": _normalize_text(raw_item.get("uf", raw_item.get("estado"))),
                 "bandeira": safe_str(raw_item.get("bandeira")),
                 "preco_api": preco_api,
@@ -87,7 +93,7 @@ def normalize_processed_notes(notas_processadas: list[dict], tipo: str) -> list[
             "cnpj": _normalize_cnpj(row.get("cnpj_fornecedor", row.get("cnpj_emitente", row.get("cnpj")))),
             "cnpj_original": safe_str(row.get("cnpj_fornecedor", row.get("cnpj_emitente", row.get("cnpj", "")))),
             "posto": emitente_nome,
-            "posto_normalizado": _normalize_text(emitente_nome),
+            "posto_normalizado": _normalize_station_name(emitente_nome),
             "cidade": _normalize_text(row.get("emitente_cidade", row.get("cidade"))),
             "uf": _normalize_text(row.get("emitente_uf", row.get("uf"))),
             "codigo_produto": codigo_produto,
@@ -381,6 +387,25 @@ def _normalize_text(value) -> str:
     text = re.sub(r"[^A-Z0-9 ]+", " ", text)
     text = re.sub(r"\s+", " ", text)
     return text.strip()
+
+
+def _normalize_station_name(value) -> str:
+    """
+    Normaliza nome do posto removendo ruído corporativo para melhorar o match tolerante.
+    """
+    normalized = _normalize_text(value)
+    if not normalized:
+        return ""
+
+    tokens = []
+    for token in normalized.split():
+        if token in GENERIC_STATION_TOKENS:
+            continue
+        tokens.append(token)
+
+    if not tokens:
+        return normalized
+    return " ".join(tokens)
 
 
 def _normalize_fuel_type(tipo: str) -> str:

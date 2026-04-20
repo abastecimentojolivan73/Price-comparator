@@ -9,7 +9,7 @@ from openpyxl.styles import (
 )
 from openpyxl.utils import get_column_letter
 from fpdf import FPDF
-from utils.helpers import get_logger, ensure_dir
+from utils.helpers import get_logger, ensure_dir, format_cnpj
 
 logger = get_logger(__name__)
 
@@ -33,15 +33,15 @@ THIN_BORDER = Border(
 )
 
 HEADERS = [
-    "Arquivo", "CNPJ Fornecedor", "Cód. Produto", "Descrição",
+    "Arquivo", "CNPJ Fornecedor", "Posto Referência", "Cód. Produto", "Descrição",
     "Qtd", "Valor Total (R$)", "Preço XML (R$)", "Preço API (R$)",
-    "Dif. Abs. (R$)", "Dif. %", "Status", "Posto Referência", "Motivo", "Data Processamento"
+    "Dif. Abs. (R$)", "Dif. %", "Status", "Motivo", "Data Processamento"
 ]
 
 FIELD_MAP = [
-    "nome_arquivo", "cnpj_fornecedor", "codigo_produto", "descricao",
+    "nome_arquivo", "cnpj_fornecedor", "posto_referencia", "codigo_produto", "descricao",
     "qtd", "valor_total", "preco_xml", "preco_api",
-    "diff_abs", "diff_pct", "status", "posto_referencia", "motivo", "data_processamento"
+    "diff_abs", "diff_pct", "status", "motivo", "data_processamento"
 ]
 
 
@@ -86,6 +86,8 @@ def export_excel(rows: list, output_path: str) -> bool:
 
             for col_idx, field in enumerate(FIELD_MAP, start=1):
                 value = row.get(field, "")
+                if field == "cnpj_fornecedor":
+                    value = format_cnpj(value)
                 cell = ws.cell(row=row_idx, column=col_idx, value=value)
                 cell.fill = fill
                 cell.border = THIN_BORDER
@@ -100,7 +102,7 @@ def export_excel(rows: list, output_path: str) -> bool:
                     cell.number_format = '#,##0.0000'
 
         # Larguras de coluna
-        col_widths = [30, 20, 18, 35, 10, 18, 18, 18, 18, 12, 12, 28, 42, 22]
+        col_widths = [30, 20, 28, 18, 35, 10, 18, 18, 18, 18, 12, 12, 42, 22]
         for col_idx, width in enumerate(col_widths, start=1):
             ws.column_dimensions[get_column_letter(col_idx)].width = width
 
@@ -187,6 +189,7 @@ def export_pdf(rows: list, output_path: str) -> bool:
         col_defs = [
             ("Arquivo", 34),
             ("CNPJ", 28),
+            ("Posto Ref.", 34),
             ("Código", 18),
             ("Descrição", 32),
             ("Qtd", 14),
@@ -196,7 +199,6 @@ def export_pdf(rows: list, output_path: str) -> bool:
             ("Dif.Abs", 16),
             ("Dif.%", 14),
             ("Status", 14),
-            ("Posto Ref.", 34),
             ("Motivo", 52),
         ]
 
@@ -222,7 +224,8 @@ def export_pdf(rows: list, output_path: str) -> bool:
 
             values = [
                 _truncate(str(row.get("nome_arquivo", "")), 24),
-                str(row.get("cnpj_fornecedor", "")),
+                format_cnpj(row.get("cnpj_fornecedor", "")),
+                _truncate(str(row.get("posto_referencia", "")), 26),
                 str(row.get("codigo_produto", "")),
                 _truncate(str(row.get("descricao", "")), 24),
                 f"{row.get('qtd', 0):.2f}",
@@ -232,7 +235,6 @@ def export_pdf(rows: list, output_path: str) -> bool:
                 f"{row.get('diff_abs', 0):.4f}",
                 f"{row.get('diff_pct', 0):.2f}%",
                 status,
-                _truncate(str(row.get("posto_referencia", "")), 26),
                 _truncate(str(row.get("motivo", "")), 42),
             ]
 

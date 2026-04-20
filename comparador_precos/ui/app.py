@@ -17,7 +17,7 @@ from core.xml_processor import iter_xml_files, parse_nfe_file
 from core.comparator import build_result_row
 from core.price_analysis import compare_note_with_api_cache, infer_fuel_type
 from core.reports import export_excel, export_pdf
-from utils.helpers import get_logger, now_str, format_currency
+from utils.helpers import get_logger, now_str, format_currency, format_cnpj
 
 logger = get_logger(__name__)
 
@@ -160,9 +160,9 @@ class ComparadorApp(ctk.CTk):
         import tkinter.ttk as ttk
 
         columns = (
-            "arquivo", "cnpj", "codigo", "descricao",
+            "arquivo", "cnpj", "posto_ref", "codigo", "descricao",
             "qtd", "v_total", "p_xml", "p_api",
-            "dif_abs", "dif_pct", "status", "posto_ref", "motivo", "data"
+            "dif_abs", "dif_pct", "status", "motivo", "data"
         )
 
         style = ttk.Style()
@@ -183,6 +183,7 @@ class ComparadorApp(ctk.CTk):
         col_config = [
             ("arquivo", "Arquivo", 180),
             ("cnpj", "CNPJ Fornecedor", 130),
+            ("posto_ref", "Posto Referência", 220),
             ("codigo", "Código", 100),
             ("descricao", "Descrição", 200),
             ("qtd", "Qtd", 70),
@@ -192,7 +193,6 @@ class ComparadorApp(ctk.CTk):
             ("dif_abs", "Dif. Abs.", 90),
             ("dif_pct", "Dif. %", 70),
             ("status", "Status", 80),
-            ("posto_ref", "Posto Referência", 220),
             ("motivo", "Motivo", 320),
             ("data", "Data", 130),
         ]
@@ -570,7 +570,8 @@ class ComparadorApp(ctk.CTk):
         for row in rows:
             values = (
                 row.get("nome_arquivo", ""),
-                row.get("cnpj_fornecedor", ""),
+                format_cnpj(row.get("cnpj_fornecedor", "")),
+                row.get("posto_referencia", ""),
                 row.get("codigo_produto", ""),
                 row.get("descricao", ""),
                 f"{row.get('qtd', 0):.4f}",
@@ -580,7 +581,6 @@ class ComparadorApp(ctk.CTk):
                 f"R$ {row.get('diff_abs', 0):,.4f}",
                 f"{row.get('diff_pct', 0):.2f}%",
                 row.get("status", ""),
-                row.get("posto_referencia", ""),
                 row.get("motivo", ""),
                 row.get("data_processamento", ""),
             )

@@ -81,9 +81,14 @@ def fetch_and_cache_prices(api_url: str, api_token: str, tipo_combustivel: str =
     for item in items:
         try:
             codigo = str(item.get("codigo_produto", item.get("codigo", ""))).strip()
-            preco = float(item.get("preco_referencia", item.get("preco", item.get("valor", 0))))
+            preco = _parse_price_value(
+                item.get("preco_referencia", item.get("preco", item.get("valor", 0)))
+            )
             if not codigo:
                 errors.append(f"Item sem codigo_produto ignorado: {item}")
+                continue
+            if preco is None:
+                errors.append(f"Preço inválido para produto {codigo}: {item.get('preco')}")
                 continue
             if preco < 0:
                 errors.append(f"Preço negativo para produto {codigo}: {preco}")
@@ -126,3 +131,21 @@ def _build_headers(api_token: str) -> dict:
     if api_token and api_token.strip():
         headers["Authorization"] = f"Bearer {api_token.strip()}"
     return headers
+
+
+def _parse_price_value(value) -> float | None:
+    """Converte preço numérico ou textual para float de forma tolerante."""
+    if value is None or value == "":
+        return None
+    if isinstance(value, str):
+        cleaned = value.strip().replace("R$", "").replace(" ", "")
+        if cleaned.count(",") == 1 and cleaned.count(".") == 0:
+            cleaned = cleaned.replace(",", ".")
+        elif cleaned.count(",") == 1 and cleaned.count(".") >= 1:
+            cleaned = cleaned.replace(".", "").replace(",", ".")
+        value = cleaned
+
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None

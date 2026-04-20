@@ -72,3 +72,12 @@ def safe_str(value, default: str = "") -> str:
 def ensure_dir(path: str):
     """Cria o diretório se não existir."""
     os.makedirs(path, exist_ok=True)
+
+
+def format_cnpj(value) -> str:
+    """Formata um CNPJ para o padrão 00.000.000/0000-00 quando possível."""
+    raw = safe_str(value)
+    digits = "".join(ch for ch in raw if ch.isdigit())
+    if len(digits) != 14:
+        return raw
+    return f"{digits[:2]}.{digits[2:5]}.{digits[5:8]}/{digits[8:12]}-{digits[12:]}"
