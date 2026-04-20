@@ -8,7 +8,11 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if BASE_DIR not in sys.path:
     sys.path.insert(0, BASE_DIR)
 
-from core.price_analysis import analyze_api_prices, normalize_api_payload
+from core.price_analysis import (
+    analyze_api_prices,
+    compare_note_with_api_cache,
+    normalize_api_payload,
+)
 from core.xml_processor import parse_nfe_file
 
 
@@ -116,6 +120,38 @@ class PriceAnalysisTests(unittest.TestCase):
         self.assertEqual(parsed["emitente_nome"], "Distribuidora Alpha Combustiveis Ltda")
         self.assertEqual(parsed["emitente_cidade"], "São Paulo")
         self.assertEqual(parsed["emitente_uf"], "SP")
+
+    @patch("core.comparator.get_tolerancia", return_value=None)
+    def test_compare_note_with_api_cache_uses_local_payload(self, _mock_tolerancia):
+        nota = {
+            "nome_arquivo": "NF_003.xml",
+            "cnpj_fornecedor": "05.443.159/0001-02",
+            "emitente_nome": "POSTO MARAJO APARECIDA DE GOIANIA",
+            "emitente_cidade": "Aparecida de Goiania",
+            "emitente_uf": "GO",
+            "codigo_produto": "DIESEL-S10",
+            "descricao": "OLEO DIESEL S10",
+            "preco_xml": 6.89,
+        }
+        api_cache_local = [
+            {
+                "codigo": 22,
+                "cnpj": "05.443.159/0001-02",
+                "estado": "GO",
+                "cidade": "APARECIDA DE GOIANIA - GO",
+                "posto": "POSTO MARAJO APARECIDA DE GOIANIA",
+                "preço": 7.0,
+                "uf": "GOIÁS",
+            }
+        ]
+
+        comparison, errors = compare_note_with_api_cache(nota, api_cache_local, "diesel")
+
+        self.assertEqual(errors, [])
+        self.assertIsNotNone(comparison)
+        self.assertEqual(comparison["status"], "OK")
+        self.assertEqual(comparison["posto"], "POSTO MARAJO APARECIDA DE GOIANIA")
+        self.assertAlmostEqual(comparison["preco_api"], 7.0, places=2)
 
 
 if __name__ == "__main__":

@@ -10,11 +10,12 @@ import tkinter as tk
 import customtkinter as ctk
 from core.database import (
     upsert_config_fornecedor, list_config_fornecedores, delete_config_fornecedor,
-    list_resultados, clear_resultados, insert_resultado
+    list_resultados, clear_resultados, insert_resultado, list_cache_precos_detalhes
 )
 from core.api_service import fetch_and_cache_prices, get_price_from_cache
 from core.xml_processor import iter_xml_files, parse_nfe_file
 from core.comparator import build_result_row
+from core.price_analysis import compare_note_with_api_cache, infer_fuel_type
 from core.reports import export_excel, export_pdf
 from utils.helpers import get_logger, now_str, format_currency
 
@@ -365,6 +366,10 @@ class ComparadorApp(ctk.CTk):
                 return
 
             data_proc = now_str()
+            cache_detalhado = {
+                "diesel": list_cache_precos_detalhes("diesel"),
+                "arla": list_cache_precos_detalhes("arla"),
+            }
 
             for filepath in xml_files:
                 filename = os.path.basename(filepath)
@@ -376,6 +381,10 @@ class ComparadorApp(ctk.CTk):
 
                 cnpj = nfe_data["cnpj_emitente"]
                 for item in nfe_data["itens"]:
+                    tipo_combustivel = infer_fuel_type(
+                        item.get("codigo_produto", ""),
+                        item.get("descricao", ""),
+                    )
                     preco_api = get_price_from_cache(item["codigo_produto"]) or 0.0
                     row = build_result_row(
                         filename,
@@ -386,7 +395,25 @@ class ComparadorApp(ctk.CTk):
                         emitente_nome=nfe_data.get("emitente_nome", ""),
                         emitente_cidade=nfe_data.get("emitente_cidade", ""),
                         emitente_uf=nfe_data.get("emitente_uf", ""),
+                        tipo_combustivel=tipo_combustivel,
                     )
+
+                    if tipo_combustivel in cache_detalhado and cache_detalhado[tipo_combustivel]:
+                        comparison, comparison_errors = compare_note_with_api_cache(
+                            row,
+                            cache_detalhado[tipo_combustivel],
+                            tipo_combustivel,
+                        )
+                        errors.extend(comparison_errors)
+                        if comparison:
+                            row["preco_api"] = comparison["preco_api"]
+                            row["diff_abs"] = comparison["diferenca"]
+                            row["diff_pct"] = comparison["percentual"]
+                            row["status"] = comparison["status"]
+                            row["motivo"] = comparison["motivo"]
+                            row["posto_referencia"] = comparison["posto"]
+                            row["origem_comparacao"] = "cache_detalhado"
+
                     insert_resultado(row)
                     results.append(row)
 

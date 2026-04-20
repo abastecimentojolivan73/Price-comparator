@@ -3,7 +3,12 @@ core/api_service.py - Consumo da API de referência de preços e atualização d
 """
 import requests
 from utils.helpers import get_logger, now_str
-from core.database import upsert_preco_api, get_preco_api
+from core.database import (
+    upsert_preco_api,
+    get_preco_api,
+    replace_cache_precos_detalhes,
+)
+from core.price_analysis import normalize_api_payload
 
 logger = get_logger(__name__)
 
@@ -44,7 +49,7 @@ def fetch_api_payload(api_url: str, api_token: str):
         return None, [msg]
 
 
-def fetch_and_cache_prices(api_url: str, api_token: str) -> tuple[int, list[str]]:
+def fetch_and_cache_prices(api_url: str, api_token: str, tipo_combustivel: str = "diesel") -> tuple[int, list[str]]:
     """
     Busca todos os preços da API de referência e persiste no cache local.
 
@@ -90,6 +95,15 @@ def fetch_and_cache_prices(api_url: str, api_token: str) -> tuple[int, list[str]
         except Exception as e:
             errors.append(f"Erro ao processar item {item}: {e}")
             logger.warning("Erro ao processar item de preço: %s — %s", item, e)
+
+    normalized_items, normalized_errors = normalize_api_payload(payload, tipo_combustivel)
+    errors.extend(normalized_errors)
+    if normalized_items:
+        saved_count = replace_cache_precos_detalhes(tipo_combustivel, normalized_items, data_atualizacao)
+        if saved_count != len(normalized_items):
+            errors.append(
+                f"Cache detalhado de {tipo_combustivel} salvo parcialmente: {saved_count}/{len(normalized_items)}."
+            )
 
     logger.info("Cache atualizado: %d produtos. Erros: %d", count, len(errors))
     return count, errors

@@ -45,6 +45,20 @@ def init_db():
                 data_atualizacao TEXT NOT NULL
             );
 
+            CREATE TABLE IF NOT EXISTS cache_precos_api_detalhes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tipo_combustivel TEXT NOT NULL,
+                codigo TEXT,
+                cnpj TEXT,
+                estado TEXT,
+                cidade TEXT,
+                posto TEXT,
+                preco REAL NOT NULL,
+                uf TEXT,
+                bandeira TEXT,
+                data_atualizacao TEXT NOT NULL
+            );
+
             CREATE TABLE IF NOT EXISTS resultados (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 nome_arquivo TEXT NOT NULL,
@@ -52,6 +66,10 @@ def init_db():
                 emitente_nome TEXT,
                 emitente_cidade TEXT,
                 emitente_uf TEXT,
+                tipo_combustivel TEXT,
+                posto_referencia TEXT,
+                motivo TEXT,
+                origem_comparacao TEXT,
                 codigo_produto TEXT NOT NULL,
                 descricao TEXT,
                 qtd REAL,
@@ -77,6 +95,10 @@ def _ensure_resultados_columns(conn: sqlite3.Connection):
         ("emitente_nome", "TEXT"),
         ("emitente_cidade", "TEXT"),
         ("emitente_uf", "TEXT"),
+        ("tipo_combustivel", "TEXT"),
+        ("posto_referencia", "TEXT"),
+        ("motivo", "TEXT"),
+        ("origem_comparacao", "TEXT"),
     ):
         if column_name not in existing_columns:
             conn.execute(f"ALTER TABLE resultados ADD COLUMN {column_name} {column_type}")
@@ -199,24 +221,98 @@ def list_cache_precos() -> list:
         return []
 
 
+def replace_cache_precos_detalhes(tipo_combustivel: str, items: list[dict], data_atualizacao: str) -> int:
+    """
+    Substitui o cache detalhado local de um tipo de combustível pelo payload mais recente.
+    """
+    try:
+        with get_connection() as conn:
+            conn.execute(
+                "DELETE FROM cache_precos_api_detalhes WHERE tipo_combustivel = ?",
+                (tipo_combustivel,),
+            )
+            conn.executemany(
+                """
+                INSERT INTO cache_precos_api_detalhes
+                    (tipo_combustivel, codigo, cnpj, estado, cidade, posto, preco, uf, bandeira, data_atualizacao)
+                VALUES
+                    (:tipo_combustivel, :codigo, :cnpj, :estado, :cidade, :posto, :preco, :uf, :bandeira, :data_atualizacao)
+                """,
+                [
+                    {
+                        "tipo_combustivel": tipo_combustivel,
+                        "codigo": item.get("codigo", ""),
+                        "cnpj": item.get("cnpj", ""),
+                        "estado": item.get("estado", ""),
+                        "cidade": item.get("cidade", ""),
+                        "posto": item.get("posto", ""),
+                        "preco": item.get("preco_api", 0.0),
+                        "uf": item.get("uf", ""),
+                        "bandeira": item.get("bandeira", ""),
+                        "data_atualizacao": data_atualizacao,
+                    }
+                    for item in items
+                ],
+            )
+        return len(items)
+    except Exception as e:
+        logger.error("Erro ao substituir cache detalhado de %s: %s", tipo_combustivel, e)
+        return 0
+
+
+def list_cache_precos_detalhes(tipo_combustivel: str | None = None) -> list[dict]:
+    """Lista o cache detalhado local de preços da API."""
+    try:
+        with get_connection() as conn:
+            if tipo_combustivel:
+                rows = conn.execute(
+                    """
+                    SELECT * FROM cache_precos_api_detalhes
+                    WHERE tipo_combustivel = ?
+                    ORDER BY posto, cnpj
+                    """,
+                    (tipo_combustivel,),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT * FROM cache_precos_api_detalhes ORDER BY tipo_combustivel, posto, cnpj"
+                ).fetchall()
+        return [dict(r) for r in rows]
+    except Exception as e:
+        logger.error("Erro ao listar cache_precos_api_detalhes: %s", e)
+        return []
+
+
 # ─── resultados CRUD ─────────────────────────────────────────────────────────
 
 def insert_resultado(data: dict) -> bool:
     """Insere um resultado de comparação no banco."""
     try:
+        payload = {
+            "emitente_nome": "",
+            "emitente_cidade": "",
+            "emitente_uf": "",
+            "tipo_combustivel": "",
+            "posto_referencia": "",
+            "motivo": "",
+            "origem_comparacao": "cache_codigo",
+        }
+        payload.update(data)
         with get_connection() as conn:
             conn.execute("""
                 INSERT INTO resultados
                     (nome_arquivo, cnpj_fornecedor, emitente_nome, emitente_cidade, emitente_uf,
+                     tipo_combustivel, posto_referencia, motivo, origem_comparacao,
                      codigo_produto, descricao,
                      qtd, valor_total, preco_xml, preco_api,
                      diff_abs, diff_pct, status, data_processamento)
                 VALUES
                     (:nome_arquivo, :cnpj_fornecedor, :emitente_nome, :emitente_cidade, :emitente_uf,
+                     :tipo_combustivel, :posto_referencia, :motivo, :origem_comparacao,
                      :codigo_produto, :descricao,
                      :qtd, :valor_total, :preco_xml, :preco_api,
                      :diff_abs, :diff_pct, :status, :data_processamento)
-            """, data)
+            """, payload)
         return True
     except Exception as e:
         logger.error("Erro ao inserir resultado: %s", e)

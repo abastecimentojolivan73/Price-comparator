@@ -163,6 +163,56 @@ def analyze_api_prices(
     return results, errors
 
 
+def compare_note_with_api_cache(
+    nota_processada: dict,
+    api_payload,
+    tipo: str,
+    name_match_threshold: float = DEFAULT_NAME_MATCH_THRESHOLD,
+) -> tuple[dict | None, list[str]]:
+    """
+    Compara uma única nota processada contra o cache detalhado local da API.
+    """
+    api_items, errors = normalize_api_payload(api_payload, tipo)
+    notas_normalizadas = normalize_processed_notes([nota_processada], tipo)
+
+    if not notas_normalizadas:
+        return None, errors
+
+    nota = notas_normalizadas[0]
+    api_match, match_reason = _find_matching_api_item(
+        nota,
+        api_items,
+        name_match_threshold=name_match_threshold,
+    )
+    if api_match is None:
+        return None, errors
+
+    comparison = compare_price(
+        cnpj=nota["cnpj"] or nota["cnpj_original"],
+        codigo_produto=nota["codigo_produto"] or tipo.upper(),
+        preco_xml=nota["preco_nota"],
+        preco_api=api_match["preco_api"],
+    )
+
+    return {
+        "tipo": tipo,
+        "cnpj": api_match["cnpj"] or nota["cnpj_original"],
+        "posto": api_match["posto"] or nota["posto"],
+        "preco_api": api_match["preco_api"],
+        "preco_nota": nota["preco_nota"],
+        "diferenca": comparison["diff_abs"],
+        "percentual": comparison["diff_pct"],
+        "status": comparison["status"],
+        "motivo": _build_reason(comparison["status"], match_reason, nota["preco_nota"], api_match["preco_api"]),
+        "match_reason": match_reason,
+    }, errors
+
+
+def infer_fuel_type(codigo_produto: str, descricao: str) -> str:
+    """Expõe a inferência de tipo para integração com o fluxo principal."""
+    return _infer_fuel_type(codigo_produto, descricao)
+
+
 def _extract_payload_items(payload) -> list[dict]:
     if isinstance(payload, list):
         return payload
@@ -233,6 +283,59 @@ def _pick_best_note(api_item: dict, candidates: list[dict]) -> dict:
             abs(note["preco_nota"] - api_item["preco_api"]),
             note["nome_arquivo"],
             note["codigo_produto"],
+        ),
+    )
+
+
+def _find_matching_api_item(
+    nota: dict,
+    api_items: list[dict],
+    name_match_threshold: float,
+) -> tuple[dict | None, str]:
+    cnpj_candidates = [
+        item for item in api_items
+        if nota["cnpj"] and nota["cnpj"] in item["cnpjs_normalizados"]
+    ]
+    if cnpj_candidates:
+        return _pick_best_api_item(nota, cnpj_candidates), "Correspondência encontrada por CNPJ"
+
+    posto_nota = nota["posto_normalizado"]
+    if not posto_nota:
+        return None, "Sem nome do posto na nota para comparação"
+
+    scored_candidates: list[tuple[float, dict]] = []
+    for api_item in api_items:
+        ratio = SequenceMatcher(None, posto_nota, api_item["posto_normalizado"]).ratio()
+        if ratio < name_match_threshold:
+            continue
+
+        score = ratio
+        if nota["cidade"] and nota["cidade"] == api_item["cidade"]:
+            score += 0.10
+        if nota["uf"] and nota["uf"] == api_item["uf"]:
+            score += 0.05
+        scored_candidates.append((score, api_item))
+
+    if not scored_candidates:
+        return None, "Nenhum posto compatível encontrado"
+
+    scored_candidates.sort(
+        key=lambda item: (
+            item[0],
+            -abs(item[1]["preco_api"] - nota["preco_nota"]),
+        ),
+        reverse=True,
+    )
+    return scored_candidates[0][1], "Correspondência tolerante por nome do posto"
+
+
+def _pick_best_api_item(nota: dict, candidates: list[dict]) -> dict:
+    return min(
+        candidates,
+        key=lambda item: (
+            abs(item["preco_api"] - nota["preco_nota"]),
+            item["posto"],
+            item["codigo"],
         ),
     )
 

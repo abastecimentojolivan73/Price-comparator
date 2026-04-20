@@ -88,6 +88,10 @@ def build_result_row(
     emitente_nome: str = "",
     emitente_cidade: str = "",
     emitente_uf: str = "",
+    tipo_combustivel: str = "",
+    posto_referencia: str = "",
+    motivo: str = "",
+    origem_comparacao: str = "cache_codigo",
 ) -> dict:
     """
     Monta o dict completo de um resultado para inserção no banco ou exportação.
@@ -112,6 +116,10 @@ def build_result_row(
         "emitente_nome": emitente_nome,
         "emitente_cidade": emitente_cidade,
         "emitente_uf": emitente_uf,
+        "tipo_combustivel": tipo_combustivel,
+        "posto_referencia": posto_referencia,
+        "motivo": motivo,
+        "origem_comparacao": origem_comparacao,
         "codigo_produto": item["codigo_produto"],
         "descricao": item.get("descricao", ""),
         "qtd": item.get("qtd", 0.0),
