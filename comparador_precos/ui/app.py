@@ -12,6 +12,7 @@ from core.database import (
     upsert_config_fornecedor, list_config_fornecedores, delete_config_fornecedor,
     list_resultados, clear_resultados, insert_resultado, list_cache_precos_detalhes,
     get_app_config, set_app_config,
+    add_ncm_sh_ignorado, list_ncm_sh_ignorados, delete_ncm_sh_ignorado, is_ncm_sh_ignorado,
 )
 from core.api_service import fetch_and_cache_prices, get_price_from_cache
 from core.xml_processor import iter_xml_files, parse_nfe_file
@@ -298,6 +299,42 @@ class ComparadorApp(ctk.CTk):
         ).pack(side="bottom", pady=8)
 
         self.after(200, self._load_configs_to_tree)
+        self.after(250, self._load_ncm_sh_ignorados_to_tree)
+
+        ignore_frame = ctk.CTkFrame(tab)
+        ignore_frame.pack(fill="both", expand=True, padx=10, pady=(0, 10))
+
+        ctk.CTkLabel(
+            ignore_frame,
+            text="Ignorar Itens por NCM/SH",
+            font=ctk.CTkFont(size=14, weight="bold"),
+        ).pack(anchor="w", padx=8, pady=(8, 6))
+
+        ignore_form = ctk.CTkFrame(ignore_frame)
+        ignore_form.pack(fill="x", padx=8, pady=(0, 8))
+
+        ctk.CTkLabel(ignore_form, text="NCM/SH:", anchor="w").grid(
+            row=0, column=0, padx=(12, 2), pady=6, sticky="w"
+        )
+        self._ncm_sh_var = tk.StringVar()
+        ctk.CTkEntry(
+            ignore_form,
+            textvariable=self._ncm_sh_var,
+            width=180,
+            placeholder_text="Ex: 27101921",
+        ).grid(row=0, column=1, padx=(2, 8), pady=6, sticky="w")
+
+        ctk.CTkButton(
+            ignore_form, text="Adicionar NCM/SH", width=160,
+            command=self._on_add_ncm_sh_ignorado, fg_color="#2980b9"
+        ).grid(row=0, column=2, padx=16, pady=6)
+
+        self._ncm_sh_tree = self._create_ncm_sh_tree(ignore_frame)
+
+        ctk.CTkButton(
+            ignore_frame, text="Excluir NCM/SH Selecionado", width=220,
+            command=self._on_delete_ncm_sh_ignorado, fg_color="#e74c3c"
+        ).pack(side="bottom", pady=8)
 
     def _create_config_tree(self, parent):
         import tkinter.ttk as ttk
@@ -316,6 +353,29 @@ class ComparadorApp(ctk.CTk):
             ("tipo_comb", "Tipo Combustível", 130),
             ("tol_tipo", "Tipo Tolerância", 120),
             ("tol_valor", "Valor Tolerância", 120),
+        ]
+        for col_id, heading, width in col_cfg:
+            tree.heading(col_id, text=heading)
+            tree.column(col_id, width=width, minwidth=40)
+
+        vsb.pack(side="right", fill="y")
+        tree.pack(fill="both", expand=True)
+        return tree
+
+    def _create_ncm_sh_tree(self, parent):
+        import tkinter.ttk as ttk
+
+        columns = ("id", "ncm_sh")
+        frame = tk.Frame(parent, bg="#2b2b2b")
+        frame.pack(fill="both", expand=True, padx=4, pady=4)
+
+        tree = ttk.Treeview(frame, columns=columns, show="headings", selectmode="browse", height=6)
+        vsb = ttk.Scrollbar(frame, orient="vertical", command=tree.yview)
+        tree.configure(yscrollcommand=vsb.set)
+
+        col_cfg = [
+            ("id", "ID", 50),
+            ("ncm_sh", "NCM/SH Ignorado", 180),
         ]
         for col_id, heading, width in col_cfg:
             tree.heading(col_id, text=heading)
@@ -404,6 +464,14 @@ class ComparadorApp(ctk.CTk):
 
                 cnpj = nfe_data["cnpj_emitente"]
                 for item in nfe_data["itens"]:
+                    if is_ncm_sh_ignorado(item.get("ncm_sh", "")):
+                        logger.info(
+                            "Item ignorado por NCM/SH %s na nota %s arquivo %s",
+                            item.get("ncm_sh", ""),
+                            nfe_data.get("numero_nota", ""),
+                            filename,
+                        )
+                        continue
                     tipo_combustivel = infer_fuel_type(
                         item.get("codigo_produto", ""),
                         item.get("descricao", ""),
@@ -568,6 +636,28 @@ class ComparadorApp(ctk.CTk):
             delete_config_fornecedor(record_id)
             self._load_configs_to_tree()
 
+    def _on_add_ncm_sh_ignorado(self):
+        ncm_sh = "".join(ch for ch in self._ncm_sh_var.get().strip() if ch.isdigit())
+        if not ncm_sh:
+            messagebox.showwarning("Validação", "Informe um NCM/SH numérico válido.")
+            return
+        if add_ncm_sh_ignorado(ncm_sh):
+            self._ncm_sh_var.set("")
+            self._load_ncm_sh_ignorados_to_tree()
+        else:
+            messagebox.showerror("Erro", "Não foi possível salvar o NCM/SH ignorado.")
+
+    def _on_delete_ncm_sh_ignorado(self):
+        selected = self._ncm_sh_tree.selection()
+        if not selected:
+            messagebox.showwarning("Atenção", "Selecione um NCM/SH para excluir.")
+            return
+        item_values = self._ncm_sh_tree.item(selected[0], "values")
+        record_id = int(item_values[0])
+        if messagebox.askyesno("Confirmar", f"Excluir NCM/SH ID={record_id}?"):
+            delete_ncm_sh_ignorado(record_id)
+            self._load_ncm_sh_ignorados_to_tree()
+
     def _on_close(self):
         """Persiste configurações e encerra a aplicação."""
         self._save_app_config()
@@ -630,4 +720,15 @@ class ComparadorApp(ctk.CTk):
                 cfg.get("tipo_combustivel", ""),
                 cfg.get("tolerancia_tipo", ""),
                 cfg.get("tolerancia_valor", ""),
+            ))
+
+    def _load_ncm_sh_ignorados_to_tree(self):
+        """Recarrega a lista global de NCM/SH ignorados."""
+        for item in self._ncm_sh_tree.get_children():
+            self._ncm_sh_tree.delete(item)
+
+        for row in list_ncm_sh_ignorados():
+            self._ncm_sh_tree.insert("", "end", values=(
+                row.get("id", ""),
+                row.get("ncm_sh", ""),
             ))

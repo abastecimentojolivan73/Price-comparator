@@ -130,6 +130,7 @@ def _extract_items(nfe_node, ns: dict, filename: str, erros: list):
 
             c_prod = safe_str(prod.findtext("nfe:cProd", namespaces=ns))
             x_prod = safe_str(prod.findtext("nfe:xProd", namespaces=ns))
+            ncm_sh = safe_str(prod.findtext("nfe:NCM", namespaces=ns))
             q_com_raw = prod.findtext("nfe:qCom", namespaces=ns)
             v_prod_raw = prod.findtext("nfe:vProd", namespaces=ns)
             v_desc_raw = prod.findtext("nfe:vDesc", namespaces=ns)
@@ -151,6 +152,7 @@ def _extract_items(nfe_node, ns: dict, filename: str, erros: list):
             yield {
                 "codigo_produto": c_prod,
                 "descricao": x_prod,
+                "ncm_sh": ncm_sh,
                 "qtd": float(q_com),
                 "valor_total": float(v_prod - v_desc),
                 "preco_xml": float(preco_unitario),

@@ -144,6 +144,7 @@ class PriceAnalysisTests(unittest.TestCase):
         self.assertEqual(parsed["emitente_nome"], "Distribuidora Alpha Combustiveis Ltda")
         self.assertEqual(parsed["emitente_cidade"], "São Paulo")
         self.assertEqual(parsed["emitente_uf"], "SP")
+        self.assertTrue("ncm_sh" in parsed["itens"][0])
 
     @patch("core.comparator.get_tolerancia", return_value=None)
     def test_compare_note_with_api_cache_uses_local_payload(self, _mock_tolerancia):

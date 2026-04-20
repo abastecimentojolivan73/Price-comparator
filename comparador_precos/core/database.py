@@ -33,6 +33,11 @@ def init_db():
                 valor TEXT
             );
 
+            CREATE TABLE IF NOT EXISTS ncm_sh_ignorados (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ncm_sh TEXT NOT NULL UNIQUE
+            );
+
             CREATE TABLE IF NOT EXISTS config_fornecedores (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 cnpj TEXT NOT NULL,
@@ -126,6 +131,65 @@ def get_app_config(chave: str, default: str = "") -> str:
     except Exception as e:
         logger.error("Erro ao buscar app_config chave=%s: %s", chave, e)
         return default
+
+
+def add_ncm_sh_ignorado(ncm_sh: str) -> bool:
+    """Adiciona um NCM/SH global na lista de ignorados."""
+    try:
+        with get_connection() as conn:
+            conn.execute(
+                "INSERT OR IGNORE INTO ncm_sh_ignorados (ncm_sh) VALUES (?)",
+                (_normalize_ncm_sh(ncm_sh),),
+            )
+        return True
+    except Exception as e:
+        logger.error("Erro ao adicionar NCM/SH ignorado %s: %s", ncm_sh, e)
+        return False
+
+
+def list_ncm_sh_ignorados() -> list[dict]:
+    """Lista todos os NCM/SH globais ignorados."""
+    try:
+        with get_connection() as conn:
+            rows = conn.execute(
+                "SELECT * FROM ncm_sh_ignorados ORDER BY ncm_sh"
+            ).fetchall()
+        return [dict(r) for r in rows]
+    except Exception as e:
+        logger.error("Erro ao listar NCM/SH ignorados: %s", e)
+        return []
+
+
+def delete_ncm_sh_ignorado(record_id: int) -> bool:
+    """Exclui um NCM/SH ignorado pelo ID."""
+    try:
+        with get_connection() as conn:
+            conn.execute("DELETE FROM ncm_sh_ignorados WHERE id = ?", (record_id,))
+        return True
+    except Exception as e:
+        logger.error("Erro ao excluir NCM/SH ignorado id=%s: %s", record_id, e)
+        return False
+
+
+def is_ncm_sh_ignorado(ncm_sh: str) -> bool:
+    """Verifica se um NCM/SH está configurado para ignorar globalmente."""
+    normalized = _normalize_ncm_sh(ncm_sh)
+    if not normalized:
+        return False
+    try:
+        with get_connection() as conn:
+            row = conn.execute(
+                "SELECT 1 FROM ncm_sh_ignorados WHERE ncm_sh = ?",
+                (normalized,),
+            ).fetchone()
+        return row is not None
+    except Exception as e:
+        logger.error("Erro ao consultar NCM/SH ignorado %s: %s", ncm_sh, e)
+        return False
+
+
+def _normalize_ncm_sh(value: str) -> str:
+    return "".join(ch for ch in str(value or "").strip() if ch.isdigit())
 
 
 def _ensure_resultados_status_schema(conn: sqlite3.Connection):
