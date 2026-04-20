@@ -212,15 +212,45 @@ def upsert_config_fornecedor(cnpj: str, codigo_produto: str,
     """
     try:
         with get_connection() as conn:
-            conn.execute("""
-                INSERT INTO config_fornecedores
-                    (cnpj, codigo_produto, tipo_combustivel, tolerancia_tipo, tolerancia_valor)
-                VALUES (?, ?, ?, ?, ?)
-                ON CONFLICT(cnpj, codigo_produto) DO UPDATE SET
-                    tipo_combustivel = excluded.tipo_combustivel,
-                    tolerancia_tipo = excluded.tolerancia_tipo,
-                    tolerancia_valor = excluded.tolerancia_valor
-            """, (cnpj, codigo_produto, tipo_combustivel, tolerancia_tipo, tolerancia_valor))
+            normalized_code = (codigo_produto or "").strip()
+            normalized_tipo = (tipo_combustivel or "").strip().lower()
+
+            if normalized_tipo:
+                existing = conn.execute(
+                    """
+                    SELECT id FROM config_fornecedores
+                    WHERE cnpj = ? AND lower(coalesce(tipo_combustivel, '')) = ?
+                    """,
+                    (cnpj, normalized_tipo),
+                ).fetchone()
+                if existing:
+                    conn.execute(
+                        """
+                        UPDATE config_fornecedores
+                        SET codigo_produto = ?, tipo_combustivel = ?, tolerancia_tipo = ?, tolerancia_valor = ?
+                        WHERE id = ?
+                        """,
+                        (normalized_code, normalized_tipo, tolerancia_tipo, tolerancia_valor, existing["id"]),
+                    )
+                else:
+                    conn.execute(
+                        """
+                        INSERT INTO config_fornecedores
+                            (cnpj, codigo_produto, tipo_combustivel, tolerancia_tipo, tolerancia_valor)
+                        VALUES (?, ?, ?, ?, ?)
+                        """,
+                        (cnpj, normalized_code, normalized_tipo, tolerancia_tipo, tolerancia_valor),
+                    )
+            else:
+                conn.execute("""
+                    INSERT INTO config_fornecedores
+                        (cnpj, codigo_produto, tipo_combustivel, tolerancia_tipo, tolerancia_valor)
+                    VALUES (?, ?, ?, ?, ?)
+                    ON CONFLICT(cnpj, codigo_produto) DO UPDATE SET
+                        tipo_combustivel = excluded.tipo_combustivel,
+                        tolerancia_tipo = excluded.tolerancia_tipo,
+                        tolerancia_valor = excluded.tolerancia_valor
+                """, (cnpj, normalized_code, normalized_tipo, tolerancia_tipo, tolerancia_valor))
         return True
     except Exception as e:
         logger.error("Erro ao salvar config_fornecedor: %s", e)
@@ -251,22 +281,39 @@ def delete_config_fornecedor(record_id: int) -> bool:
         return False
 
 
-def get_tolerancia(cnpj: str, codigo_produto: str) -> dict | None:
+def get_tolerancia(cnpj: str, codigo_produto: str = "", tipo_combustivel: str = "") -> dict | None:
     """
-    Busca a configuração de tolerância para um CNPJ + código de produto.
+    Busca a configuração de tolerância para um CNPJ + tipo de combustível.
+    Faz fallback para o modelo legado por código de produto.
     Retorna None se não encontrado.
     """
     try:
         with get_connection() as conn:
-            row = conn.execute(
-                """SELECT tolerancia_tipo, tolerancia_valor
-                   FROM config_fornecedores
-                   WHERE cnpj = ? AND codigo_produto = ?""",
-                (cnpj, codigo_produto)
-            ).fetchone()
+            row = None
+            if tipo_combustivel:
+                row = conn.execute(
+                    """
+                    SELECT tolerancia_tipo, tolerancia_valor
+                    FROM config_fornecedores
+                    WHERE cnpj = ? AND lower(coalesce(tipo_combustivel, '')) = lower(?)
+                    ORDER BY id DESC
+                    LIMIT 1
+                    """,
+                    (cnpj, tipo_combustivel),
+                ).fetchone()
+            if row is None and codigo_produto:
+                row = conn.execute(
+                    """SELECT tolerancia_tipo, tolerancia_valor
+                       FROM config_fornecedores
+                       WHERE cnpj = ? AND codigo_produto = ?""",
+                    (cnpj, codigo_produto)
+                ).fetchone()
         return dict(row) if row else None
     except Exception as e:
-        logger.error("Erro ao buscar tolerância CNPJ=%s prod=%s: %s", cnpj, codigo_produto, e)
+        logger.error(
+            "Erro ao buscar tolerância CNPJ=%s prod=%s tipo=%s: %s",
+            cnpj, codigo_produto, tipo_combustivel, e
+        )
         return None
 
 

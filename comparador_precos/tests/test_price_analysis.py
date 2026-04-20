@@ -107,8 +107,32 @@ class PriceAnalysisTests(unittest.TestCase):
         results, errors = analyze_api_prices(api_payload, notas_processadas, "diesel")
 
         self.assertEqual(errors, [])
-        self.assertEqual(results[0]["status"], "OK")
+        self.assertEqual(results[0]["status"], "CRITICO")
         self.assertIn("nome do posto", results[0]["motivo"])
+
+    @patch("core.comparator.get_tolerancia", return_value=None)
+    def test_default_tolerance_is_one_cent(self, _mock_tolerancia):
+        from core.comparator import compare_price
+
+        ok_comparison = compare_price(
+            cnpj="05443159000102",
+            codigo_produto="DIESEL-S10",
+            preco_xml=7.009,
+            preco_api=7.00,
+            tipo_combustivel="diesel",
+        )
+        reduction_comparison = compare_price(
+            cnpj="05443159000102",
+            codigo_produto="DIESEL-S10",
+            preco_xml=6.98,
+            preco_api=7.00,
+            tipo_combustivel="diesel",
+        )
+
+        self.assertEqual(ok_comparison["status"], "OK")
+        self.assertEqual(ok_comparison["tolerancia_tipo"], "VALOR")
+        self.assertAlmostEqual(ok_comparison["tolerancia_valor"], 0.01, places=2)
+        self.assertEqual(reduction_comparison["status"], "REDUCAO")
 
     def test_parse_nfe_file_extracts_emitente_metadata(self):
         xml_path = os.path.join(BASE_DIR, "xmls_exemplo", "NF_001_04_2026.xml")
@@ -149,7 +173,7 @@ class PriceAnalysisTests(unittest.TestCase):
 
         self.assertEqual(errors, [])
         self.assertIsNotNone(comparison)
-        self.assertEqual(comparison["status"], "OK")
+        self.assertEqual(comparison["status"], "REDUCAO")
         self.assertEqual(comparison["posto"], "POSTO MARAJO APARECIDA DE GOIANIA")
         self.assertAlmostEqual(comparison["preco_api"], 7.0, places=2)
 

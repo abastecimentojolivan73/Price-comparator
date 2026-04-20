@@ -8,8 +8,8 @@ from core.database import get_tolerancia
 logger = get_logger(__name__)
 
 # Padrão quando não há configuração específica de tolerância
-DEFAULT_TOLERANCIA_TIPO = "%"
-DEFAULT_TOLERANCIA_VALOR = Decimal("5.0")  # 5% de tolerância padrão
+DEFAULT_TOLERANCIA_TIPO = "VALOR"
+DEFAULT_TOLERANCIA_VALOR = Decimal("0.01")  # 1 centavo de tolerância padrão
 
 
 def compare_price(
@@ -17,6 +17,7 @@ def compare_price(
     codigo_produto: str,
     preco_xml: float,
     preco_api: float,
+    tipo_combustivel: str = "",
 ) -> dict:
     """
     Compara o preço extraído do XML com o preço de referência da API.
@@ -42,7 +43,7 @@ def compare_price(
         diff_pct = Decimal("0.00")
 
     # Busca tolerância configurada para este CNPJ + produto
-    config = get_tolerancia(cnpj, codigo_produto)
+    config = get_tolerancia(cnpj, codigo_produto, tipo_combustivel)
 
     if config:
         tolerancia_tipo = config["tolerancia_tipo"]
@@ -112,6 +113,7 @@ def build_result_row(
         codigo_produto=item["codigo_produto"],
         preco_xml=item["preco_xml"],
         preco_api=preco_api,
+        tipo_combustivel=tipo_combustivel,
     )
 
     return {

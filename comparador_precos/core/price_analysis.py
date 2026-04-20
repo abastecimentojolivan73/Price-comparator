@@ -152,6 +152,7 @@ def analyze_api_prices(
             codigo_produto=nota_match["codigo_produto"] or api_item["tipo"].upper(),
             preco_xml=nota_match["preco_nota"],
             preco_api=api_item["preco_api"],
+            tipo_combustivel=api_item["tipo"],
         )
 
         results.append({
@@ -198,6 +199,7 @@ def compare_note_with_api_cache(
         codigo_produto=nota["codigo_produto"] or tipo.upper(),
         preco_xml=nota["preco_nota"],
         preco_api=api_match["preco_api"],
+        tipo_combustivel=tipo,
     )
 
     return {

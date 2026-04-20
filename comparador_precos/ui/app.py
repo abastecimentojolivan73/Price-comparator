@@ -239,8 +239,7 @@ class ComparadorApp(ctk.CTk):
 
         fields = [
             ("CNPJ Fornecedor:", "cnpj", 150, "00.000.000/0000-00"),
-            ("Código Produto:", "cod_prod", 120, "Ex: ABC123"),
-            ("Tipo Combustível:", "tipo_comb", 120, "Opcional"),
+            ("Tipo Combustível:", "tipo_comb", 140, ""),
         ]
 
         self._admin_vars = {}
@@ -250,10 +249,18 @@ class ComparadorApp(ctk.CTk):
             )
             var = tk.StringVar()
             self._admin_vars[key] = var
-            ctk.CTkEntry(form_frame, textvariable=var, width=width,
-                         placeholder_text=placeholder).grid(
-                row=1, column=col * 2 + 1, padx=(2, 8), pady=6, sticky="w"
-            )
+            if key == "tipo_comb":
+                combo = ctk.CTkComboBox(
+                    form_frame, values=["diesel", "arla"], width=width, state="readonly",
+                    variable=var
+                )
+                combo.set("diesel")
+                combo.grid(row=1, column=col * 2 + 1, padx=(2, 8), pady=6, sticky="w")
+            else:
+                ctk.CTkEntry(form_frame, textvariable=var, width=width,
+                             placeholder_text=placeholder).grid(
+                    row=1, column=col * 2 + 1, padx=(2, 8), pady=6, sticky="w"
+                )
 
         # Tolerância tipo e valor
         ctk.CTkLabel(form_frame, text="Tipo Tolerância:", anchor="w").grid(
@@ -262,13 +269,13 @@ class ComparadorApp(ctk.CTk):
         self._tol_tipo = ctk.CTkComboBox(
             form_frame, values=["%", "VALOR"], width=100, state="readonly"
         )
-        self._tol_tipo.set("%")
+        self._tol_tipo.set("VALOR")
         self._tol_tipo.grid(row=2, column=1, padx=(2, 8), pady=6, sticky="w")
 
         ctk.CTkLabel(form_frame, text="Valor Tolerância:", anchor="w").grid(
             row=2, column=2, padx=(8, 2), pady=6, sticky="w"
         )
-        self._tol_valor = tk.StringVar(value="5.0")
+        self._tol_valor = tk.StringVar(value="0.01")
         ctk.CTkEntry(form_frame, textvariable=self._tol_valor, width=100,
                      placeholder_text="Ex: 5.0").grid(
             row=2, column=3, padx=(2, 8), pady=6, sticky="w"
@@ -295,7 +302,7 @@ class ComparadorApp(ctk.CTk):
     def _create_config_tree(self, parent):
         import tkinter.ttk as ttk
 
-        columns = ("id", "cnpj", "codigo_produto", "tipo_comb", "tol_tipo", "tol_valor")
+        columns = ("id", "cnpj", "tipo_comb", "tol_tipo", "tol_valor")
         frame = tk.Frame(parent, bg="#2b2b2b")
         frame.pack(fill="both", expand=True, padx=4, pady=4)
 
@@ -306,7 +313,6 @@ class ComparadorApp(ctk.CTk):
         col_cfg = [
             ("id", "ID", 50),
             ("cnpj", "CNPJ", 160),
-            ("codigo_produto", "Cód. Produto", 130),
             ("tipo_comb", "Tipo Combustível", 130),
             ("tol_tipo", "Tipo Tolerância", 120),
             ("tol_valor", "Valor Tolerância", 120),
@@ -518,13 +524,15 @@ class ComparadorApp(ctk.CTk):
 
     def _on_save_config(self):
         cnpj = self._admin_vars["cnpj"].get().strip()
-        cod = self._admin_vars["cod_prod"].get().strip()
-        tipo_comb = self._admin_vars["tipo_comb"].get().strip()
+        tipo_comb = self._admin_vars["tipo_comb"].get().strip().lower()
         tol_tipo = self._tol_tipo.get().strip()
         tol_valor_str = self._tol_valor.get().strip()
 
-        if not cnpj or not cod:
-            messagebox.showwarning("Validação", "CNPJ e Código do Produto são obrigatórios.")
+        if not cnpj or not tipo_comb:
+            messagebox.showwarning("Validação", "CNPJ e Tipo de Combustível são obrigatórios.")
+            return
+        if tipo_comb not in ("diesel", "arla"):
+            messagebox.showwarning("Validação", "Tipo de combustível deve ser diesel ou arla.")
             return
         if tol_tipo not in ("%", "VALOR"):
             messagebox.showwarning("Validação", "Tipo de tolerância deve ser '%' ou 'VALOR'.")
@@ -537,13 +545,15 @@ class ComparadorApp(ctk.CTk):
             messagebox.showwarning("Validação", "Valor de tolerância deve ser um número positivo.")
             return
 
-        ok = upsert_config_fornecedor(cnpj, cod, tipo_comb, tol_tipo, tol_valor)
+        ok = upsert_config_fornecedor(cnpj, "", tipo_comb, tol_tipo, tol_valor)
         if ok:
             messagebox.showinfo("Salvo", "Configuração salva com sucesso.")
             self._load_configs_to_tree()
             for var in self._admin_vars.values():
                 var.set("")
-            self._tol_valor.set("5.0")
+            self._admin_vars["tipo_comb"].set("diesel")
+            self._tol_tipo.set("VALOR")
+            self._tol_valor.set("0.01")
         else:
             messagebox.showerror("Erro", "Não foi possível salvar a configuração. Veja o log.")
 
@@ -616,8 +626,7 @@ class ComparadorApp(ctk.CTk):
         for cfg in configs:
             self._config_tree.insert("", "end", values=(
                 cfg.get("id", ""),
-                cfg.get("cnpj", ""),
-                cfg.get("codigo_produto", ""),
+                format_cnpj(cfg.get("cnpj", "")),
                 cfg.get("tipo_combustivel", ""),
                 cfg.get("tolerancia_tipo", ""),
                 cfg.get("tolerancia_valor", ""),
