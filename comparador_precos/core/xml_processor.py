@@ -35,7 +35,7 @@ def parse_nfe_file(filepath: str) -> tuple[dict | None, list]:
 
     Retorna:
         (nfe_data, erros)
-        nfe_data: dict com 'cnpj_emitente' e 'itens' (lista de dicts)
+        nfe_data: dict com dados do emitente e 'itens' (lista de dicts)
         erros: lista de strings com mensagens de erro/aviso
     """
     erros = []
@@ -72,9 +72,19 @@ def parse_nfe_file(filepath: str) -> tuple[dict | None, list]:
             erros.append(f"Estrutura NF-e não encontrada em '{os.path.basename(filepath)}'")
             return None, erros
 
-        # CNPJ do emitente
+        # Dados do emitente/posto
         cnpj_el = nfe_node.find(".//nfe:emit/nfe:CNPJ", ns)
         cnpj_emitente = safe_str(cnpj_el.text if cnpj_el is not None else "")
+        emitente_nome = safe_str(
+            nfe_node.findtext(".//nfe:emit/nfe:xFant", namespaces=ns)
+            or nfe_node.findtext(".//nfe:emit/nfe:xNome", namespaces=ns)
+        )
+        emitente_cidade = safe_str(
+            nfe_node.findtext(".//nfe:emit/nfe:enderEmit/nfe:xMun", namespaces=ns)
+        )
+        emitente_uf = safe_str(
+            nfe_node.findtext(".//nfe:emit/nfe:enderEmit/nfe:UF", namespaces=ns)
+        )
 
         if not cnpj_emitente:
             erros.append(f"CNPJ do emitente não encontrado em '{os.path.basename(filepath)}'")
@@ -83,6 +93,9 @@ def parse_nfe_file(filepath: str) -> tuple[dict | None, list]:
 
         return {
             "cnpj_emitente": cnpj_emitente,
+            "emitente_nome": emitente_nome,
+            "emitente_cidade": emitente_cidade,
+            "emitente_uf": emitente_uf,
             "itens": itens,
         }, erros
 

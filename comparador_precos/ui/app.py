@@ -377,7 +377,16 @@ class ComparadorApp(ctk.CTk):
                 cnpj = nfe_data["cnpj_emitente"]
                 for item in nfe_data["itens"]:
                     preco_api = get_price_from_cache(item["codigo_produto"]) or 0.0
-                    row = build_result_row(filename, cnpj, item, preco_api, data_proc)
+                    row = build_result_row(
+                        filename,
+                        cnpj,
+                        item,
+                        preco_api,
+                        data_proc,
+                        emitente_nome=nfe_data.get("emitente_nome", ""),
+                        emitente_cidade=nfe_data.get("emitente_cidade", ""),
+                        emitente_uf=nfe_data.get("emitente_uf", ""),
+                    )
                     insert_resultado(row)
                     results.append(row)
 

@@ -85,6 +85,9 @@ def build_result_row(
     item: dict,
     preco_api: float,
     data_processamento: str,
+    emitente_nome: str = "",
+    emitente_cidade: str = "",
+    emitente_uf: str = "",
 ) -> dict:
     """
     Monta o dict completo de um resultado para inserção no banco ou exportação.
@@ -106,6 +109,9 @@ def build_result_row(
     return {
         "nome_arquivo": nome_arquivo,
         "cnpj_fornecedor": cnpj_fornecedor,
+        "emitente_nome": emitente_nome,
+        "emitente_cidade": emitente_cidade,
+        "emitente_uf": emitente_uf,
         "codigo_produto": item["codigo_produto"],
         "descricao": item.get("descricao", ""),
         "qtd": item.get("qtd", 0.0),

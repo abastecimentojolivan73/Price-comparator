@@ -49,6 +49,9 @@ def init_db():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 nome_arquivo TEXT NOT NULL,
                 cnpj_fornecedor TEXT NOT NULL,
+                emitente_nome TEXT,
+                emitente_cidade TEXT,
+                emitente_uf TEXT,
                 codigo_produto TEXT NOT NULL,
                 descricao TEXT,
                 qtd REAL,
@@ -61,7 +64,23 @@ def init_db():
                 data_processamento TEXT NOT NULL
             );
         """)
+        _ensure_resultados_columns(conn)
     logger.info("Banco de dados inicializado com sucesso.")
+
+
+def _ensure_resultados_columns(conn: sqlite3.Connection):
+    """Aplica migrações leves em bancos já existentes sem destruir dados."""
+    rows = conn.execute("PRAGMA table_info(resultados)").fetchall()
+    existing_columns = {row["name"] for row in rows}
+
+    for column_name, column_type in (
+        ("emitente_nome", "TEXT"),
+        ("emitente_cidade", "TEXT"),
+        ("emitente_uf", "TEXT"),
+    ):
+        if column_name not in existing_columns:
+            conn.execute(f"ALTER TABLE resultados ADD COLUMN {column_name} {column_type}")
+            logger.info("Coluna adicionada em resultados: %s", column_name)
 
 
 # ─── config_fornecedores CRUD ────────────────────────────────────────────────
@@ -188,11 +207,13 @@ def insert_resultado(data: dict) -> bool:
         with get_connection() as conn:
             conn.execute("""
                 INSERT INTO resultados
-                    (nome_arquivo, cnpj_fornecedor, codigo_produto, descricao,
+                    (nome_arquivo, cnpj_fornecedor, emitente_nome, emitente_cidade, emitente_uf,
+                     codigo_produto, descricao,
                      qtd, valor_total, preco_xml, preco_api,
                      diff_abs, diff_pct, status, data_processamento)
                 VALUES
-                    (:nome_arquivo, :cnpj_fornecedor, :codigo_produto, :descricao,
+                    (:nome_arquivo, :cnpj_fornecedor, :emitente_nome, :emitente_cidade, :emitente_uf,
+                     :codigo_produto, :descricao,
                      :qtd, :valor_total, :preco_xml, :preco_api,
                      :diff_abs, :diff_pct, :status, :data_processamento)
             """, data)

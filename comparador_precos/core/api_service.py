@@ -10,6 +10,40 @@ logger = get_logger(__name__)
 DEFAULT_TIMEOUT = 15  # segundos
 
 
+def fetch_api_payload(api_url: str, api_token: str):
+    """
+    Busca o payload bruto da API e retorna o JSON desserializado.
+    """
+    headers = _build_headers(api_token)
+
+    try:
+        response = requests.get(api_url, headers=headers, timeout=DEFAULT_TIMEOUT)
+        response.raise_for_status()
+    except requests.exceptions.Timeout:
+        msg = f"Timeout ao acessar a API: {api_url}"
+        logger.error(msg)
+        return None, [msg]
+    except requests.exceptions.ConnectionError as e:
+        msg = f"Erro de conexão com a API: {e}"
+        logger.error(msg)
+        return None, [msg]
+    except requests.exceptions.HTTPError as e:
+        msg = f"Erro HTTP da API ({response.status_code}): {e}"
+        logger.error(msg)
+        return None, [msg]
+    except Exception as e:
+        msg = f"Erro inesperado ao chamar API: {e}"
+        logger.error(msg)
+        return None, [msg]
+
+    try:
+        return response.json(), []
+    except Exception as e:
+        msg = f"Resposta da API não é JSON válido: {e}"
+        logger.error(msg)
+        return None, [msg]
+
+
 def fetch_and_cache_prices(api_url: str, api_token: str) -> tuple[int, list[str]]:
     """
     Busca todos os preços da API de referência e persiste no cache local.
@@ -25,34 +59,9 @@ def fetch_and_cache_prices(api_url: str, api_token: str) -> tuple[int, list[str]
     errors = []
     count = 0
 
-    headers = _build_headers(api_token)
-
-    try:
-        response = requests.get(api_url, headers=headers, timeout=DEFAULT_TIMEOUT)
-        response.raise_for_status()
-    except requests.exceptions.Timeout:
-        msg = f"Timeout ao acessar a API: {api_url}"
-        logger.error(msg)
-        return 0, [msg]
-    except requests.exceptions.ConnectionError as e:
-        msg = f"Erro de conexão com a API: {e}"
-        logger.error(msg)
-        return 0, [msg]
-    except requests.exceptions.HTTPError as e:
-        msg = f"Erro HTTP da API ({response.status_code}): {e}"
-        logger.error(msg)
-        return 0, [msg]
-    except Exception as e:
-        msg = f"Erro inesperado ao chamar API: {e}"
-        logger.error(msg)
-        return 0, [msg]
-
-    try:
-        payload = response.json()
-    except Exception as e:
-        msg = f"Resposta da API não é JSON válido: {e}"
-        logger.error(msg)
-        return 0, [msg]
+    payload, fetch_errors = fetch_api_payload(api_url, api_token)
+    if fetch_errors:
+        return 0, fetch_errors
 
     # Suporte a dois formatos: lista direta ou objeto com chave "data"
     if isinstance(payload, dict):
