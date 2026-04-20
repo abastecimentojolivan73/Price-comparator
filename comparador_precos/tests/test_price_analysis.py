@@ -73,9 +73,9 @@ class PriceAnalysisTests(unittest.TestCase):
 
         self.assertEqual(errors, [])
         self.assertEqual(len(results), 1)
-        self.assertEqual(results[0]["status"], "ALERTA")
+        self.assertEqual(results[0]["status"], "REDUCAO")
         self.assertEqual(results[0]["preco_nota"], 6.89)
-        self.assertAlmostEqual(results[0]["diferenca"], 0.11, places=2)
+        self.assertAlmostEqual(results[0]["diferenca"], -0.11, places=2)
         self.assertIn("CNPJ", results[0]["motivo"])
 
     @patch("core.comparator.get_tolerancia", return_value=None)
@@ -152,6 +152,24 @@ class PriceAnalysisTests(unittest.TestCase):
         self.assertEqual(comparison["status"], "OK")
         self.assertEqual(comparison["posto"], "POSTO MARAJO APARECIDA DE GOIANIA")
         self.assertAlmostEqual(comparison["preco_api"], 7.0, places=2)
+
+    @patch(
+        "core.comparator.get_tolerancia",
+        return_value={"tolerancia_tipo": "VALOR", "tolerancia_valor": 0.05},
+    )
+    def test_compare_price_marks_reducao_when_below_api_outside_tolerance(self, _mock_tolerancia):
+        from core.comparator import compare_price
+
+        comparison = compare_price(
+            cnpj="05443159000102",
+            codigo_produto="DIESEL-S10",
+            preco_xml=6.80,
+            preco_api=7.00,
+        )
+
+        self.assertEqual(comparison["status"], "REDUCAO")
+        self.assertAlmostEqual(comparison["diff_abs"], -0.20, places=2)
+        self.assertAlmostEqual(comparison["diff_pct"], -2.86, places=2)
 
 
 if __name__ == "__main__":

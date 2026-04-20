@@ -85,6 +85,9 @@ def parse_nfe_file(filepath: str) -> tuple[dict | None, list]:
         emitente_uf = safe_str(
             nfe_node.findtext(".//nfe:emit/nfe:enderEmit/nfe:UF", namespaces=ns)
         )
+        numero_nota = safe_str(
+            nfe_node.findtext(".//nfe:ide/nfe:nNF", namespaces=ns)
+        )
 
         if not cnpj_emitente:
             erros.append(f"CNPJ do emitente não encontrado em '{os.path.basename(filepath)}'")
@@ -96,6 +99,7 @@ def parse_nfe_file(filepath: str) -> tuple[dict | None, list]:
             "emitente_nome": emitente_nome,
             "emitente_cidade": emitente_cidade,
             "emitente_uf": emitente_uf,
+            "numero_nota": numero_nota,
             "itens": itens,
         }, erros
 

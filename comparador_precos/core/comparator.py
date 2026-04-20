@@ -32,11 +32,12 @@ def compare_price(
     preco_xml_d = to_decimal(preco_xml)
     preco_api_d = to_decimal(preco_api)
 
-    # Diferença absoluta e percentual
-    diff_abs = abs(preco_xml_d - preco_api_d).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
+    # Diferença assinada e percentual assinado em relação ao preço da API
+    diff_signed = (preco_xml_d - preco_api_d).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
+    diff_abs = abs(diff_signed).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
 
     if preco_api_d > 0:
-        diff_pct = ((diff_abs / preco_api_d) * 100).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        diff_pct = ((diff_signed / preco_api_d) * 100).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     else:
         diff_pct = Decimal("0.00")
 
@@ -64,13 +65,15 @@ def compare_price(
     # Determinação do status
     if diff_abs <= limite:
         status = "OK"
+    elif diff_signed < 0:
+        status = "REDUCAO"
     elif diff_abs <= limite * 2:
         status = "ALERTA"
     else:
         status = "CRITICO"
 
     return {
-        "diff_abs": float(diff_abs),
+        "diff_abs": float(diff_signed),
         "diff_pct": float(diff_pct),
         "status": status,
         "tolerancia_tipo": tolerancia_tipo,
@@ -88,6 +91,7 @@ def build_result_row(
     emitente_nome: str = "",
     emitente_cidade: str = "",
     emitente_uf: str = "",
+    numero_nota: str = "",
     tipo_combustivel: str = "",
     posto_referencia: str = "",
     motivo: str = "",
@@ -116,6 +120,7 @@ def build_result_row(
         "emitente_nome": emitente_nome,
         "emitente_cidade": emitente_cidade,
         "emitente_uf": emitente_uf,
+        "numero_nota": numero_nota,
         "tipo_combustivel": tipo_combustivel,
         "posto_referencia": posto_referencia,
         "motivo": motivo,

@@ -28,6 +28,11 @@ def init_db():
     logger.info("Inicializando banco de dados: %s", DB_PATH)
     with get_connection() as conn:
         conn.executescript("""
+            CREATE TABLE IF NOT EXISTS app_config (
+                chave TEXT PRIMARY KEY,
+                valor TEXT
+            );
+
             CREATE TABLE IF NOT EXISTS config_fornecedores (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 cnpj TEXT NOT NULL,
@@ -62,6 +67,7 @@ def init_db():
             CREATE TABLE IF NOT EXISTS resultados (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 nome_arquivo TEXT NOT NULL,
+                numero_nota TEXT,
                 cnpj_fornecedor TEXT NOT NULL,
                 emitente_nome TEXT,
                 emitente_cidade TEXT,
@@ -78,12 +84,100 @@ def init_db():
                 preco_api REAL,
                 diff_abs REAL,
                 diff_pct REAL,
-                status TEXT NOT NULL CHECK(status IN ('OK', 'ALERTA', 'CRITICO')),
+                status TEXT NOT NULL CHECK(status IN ('OK', 'ALERTA', 'CRITICO', 'REDUCAO')),
                 data_processamento TEXT NOT NULL
             );
         """)
+        _ensure_resultados_status_schema(conn)
         _ensure_resultados_columns(conn)
     logger.info("Banco de dados inicializado com sucesso.")
+
+
+def set_app_config(chave: str, valor: str) -> bool:
+    """Salva uma configuração simples da aplicação por chave."""
+    try:
+        with get_connection() as conn:
+            conn.execute(
+                """
+                INSERT INTO app_config (chave, valor)
+                VALUES (?, ?)
+                ON CONFLICT(chave) DO UPDATE SET
+                    valor = excluded.valor
+                """,
+                (chave, valor),
+            )
+        return True
+    except Exception as e:
+        logger.error("Erro ao salvar app_config chave=%s: %s", chave, e)
+        return False
+
+
+def get_app_config(chave: str, default: str = "") -> str:
+    """Busca uma configuração simples da aplicação por chave."""
+    try:
+        with get_connection() as conn:
+            row = conn.execute(
+                "SELECT valor FROM app_config WHERE chave = ?",
+                (chave,),
+            ).fetchone()
+        if not row:
+            return default
+        return row["valor"] if row["valor"] is not None else default
+    except Exception as e:
+        logger.error("Erro ao buscar app_config chave=%s: %s", chave, e)
+        return default
+
+
+def _ensure_resultados_status_schema(conn: sqlite3.Connection):
+    """
+    Recria a tabela de resultados quando o CHECK de status ainda não suporta REDUCAO.
+    """
+    row = conn.execute(
+        "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'resultados'"
+    ).fetchone()
+    create_sql = (row["sql"] or "") if row else ""
+    if "REDUCAO" in create_sql:
+        return
+
+    conn.executescript("""
+        ALTER TABLE resultados RENAME TO resultados_old;
+
+        CREATE TABLE resultados (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nome_arquivo TEXT NOT NULL,
+            numero_nota TEXT,
+            cnpj_fornecedor TEXT NOT NULL,
+            emitente_nome TEXT,
+            emitente_cidade TEXT,
+            emitente_uf TEXT,
+            tipo_combustivel TEXT,
+            posto_referencia TEXT,
+            motivo TEXT,
+            origem_comparacao TEXT,
+            codigo_produto TEXT NOT NULL,
+            descricao TEXT,
+            qtd REAL,
+            valor_total REAL,
+            preco_xml REAL,
+            preco_api REAL,
+            diff_abs REAL,
+            diff_pct REAL,
+            status TEXT NOT NULL CHECK(status IN ('OK', 'ALERTA', 'CRITICO', 'REDUCAO')),
+            data_processamento TEXT NOT NULL
+        );
+
+        INSERT INTO resultados (
+            id, nome_arquivo, cnpj_fornecedor, codigo_produto, descricao,
+            qtd, valor_total, preco_xml, preco_api, diff_abs, diff_pct, status, data_processamento
+        )
+        SELECT
+            id, nome_arquivo, cnpj_fornecedor, codigo_produto, descricao,
+            qtd, valor_total, preco_xml, preco_api, diff_abs, diff_pct, status, data_processamento
+        FROM resultados_old;
+
+        DROP TABLE resultados_old;
+    """)
+    logger.info("Tabela resultados migrada para suportar status REDUCAO.")
 
 
 def _ensure_resultados_columns(conn: sqlite3.Connection):
@@ -92,6 +186,7 @@ def _ensure_resultados_columns(conn: sqlite3.Connection):
     existing_columns = {row["name"] for row in rows}
 
     for column_name, column_type in (
+        ("numero_nota", "TEXT"),
         ("emitente_nome", "TEXT"),
         ("emitente_cidade", "TEXT"),
         ("emitente_uf", "TEXT"),
@@ -292,6 +387,7 @@ def insert_resultado(data: dict) -> bool:
             "emitente_nome": "",
             "emitente_cidade": "",
             "emitente_uf": "",
+            "numero_nota": "",
             "tipo_combustivel": "",
             "posto_referencia": "",
             "motivo": "",
@@ -301,13 +397,13 @@ def insert_resultado(data: dict) -> bool:
         with get_connection() as conn:
             conn.execute("""
                 INSERT INTO resultados
-                    (nome_arquivo, cnpj_fornecedor, emitente_nome, emitente_cidade, emitente_uf,
+                    (nome_arquivo, numero_nota, cnpj_fornecedor, emitente_nome, emitente_cidade, emitente_uf,
                      tipo_combustivel, posto_referencia, motivo, origem_comparacao,
                      codigo_produto, descricao,
                      qtd, valor_total, preco_xml, preco_api,
                      diff_abs, diff_pct, status, data_processamento)
                 VALUES
-                    (:nome_arquivo, :cnpj_fornecedor, :emitente_nome, :emitente_cidade, :emitente_uf,
+                    (:nome_arquivo, :numero_nota, :cnpj_fornecedor, :emitente_nome, :emitente_cidade, :emitente_uf,
                      :tipo_combustivel, :posto_referencia, :motivo, :origem_comparacao,
                      :codigo_produto, :descricao,
                      :qtd, :valor_total, :preco_xml, :preco_api,

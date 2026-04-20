@@ -17,12 +17,14 @@ logger = get_logger(__name__)
 COLOR_OK = "C6EFCE"       # Verde claro
 COLOR_ALERTA = "FFEB9C"   # Amarelo claro
 COLOR_CRITICO = "FFC7CE"  # Vermelho claro
+COLOR_REDUCAO = "D6EAF8"  # Azul claro
 COLOR_HEADER = "2F5496"   # Azul escuro (cabeçalho)
 COLOR_WHITE = "FFFFFF"
 
 FILL_OK = PatternFill("solid", fgColor=COLOR_OK)
 FILL_ALERTA = PatternFill("solid", fgColor=COLOR_ALERTA)
 FILL_CRITICO = PatternFill("solid", fgColor=COLOR_CRITICO)
+FILL_REDUCAO = PatternFill("solid", fgColor=COLOR_REDUCAO)
 FILL_HEADER = PatternFill("solid", fgColor=COLOR_HEADER)
 
 THIN_BORDER = Border(
@@ -33,15 +35,15 @@ THIN_BORDER = Border(
 )
 
 HEADERS = [
-    "Arquivo", "CNPJ Fornecedor", "Posto Referência", "Cód. Produto", "Descrição",
+    "Arquivo", "N. Nota", "CNPJ Fornecedor", "Posto Referência", "Descrição",
     "Qtd", "Valor Total (R$)", "Preço XML (R$)", "Preço API (R$)",
-    "Dif. Abs. (R$)", "Dif. %", "Status", "Motivo", "Data Processamento"
+    "Dif. (R$)", "Dif. %", "Status", "Data Processamento"
 ]
 
 FIELD_MAP = [
-    "nome_arquivo", "cnpj_fornecedor", "posto_referencia", "codigo_produto", "descricao",
+    "nome_arquivo", "numero_nota", "cnpj_fornecedor", "posto_referencia", "descricao",
     "qtd", "valor_total", "preco_xml", "preco_api",
-    "diff_abs", "diff_pct", "status", "motivo", "data_processamento"
+    "diff_abs", "diff_pct", "status", "data_processamento"
 ]
 
 
@@ -62,7 +64,7 @@ def export_excel(rows: list, output_path: str) -> bool:
         ws.title = "Comparação de Preços"
 
         # Linha de título
-        ws.merge_cells("A1:N1")
+        ws.merge_cells("A1:M1")
         title_cell = ws["A1"]
         title_cell.value = f"Relatório de Comparação de Preços — Gerado em {datetime.now().strftime('%d/%m/%Y %H:%M')}"
         title_cell.font = Font(bold=True, color=COLOR_WHITE, size=12)
@@ -82,7 +84,12 @@ def export_excel(rows: list, output_path: str) -> bool:
         # Dados
         for row_idx, row in enumerate(rows, start=3):
             status = row.get("status", "OK")
-            fill = FILL_OK if status == "OK" else FILL_ALERTA if status == "ALERTA" else FILL_CRITICO
+            fill = (
+                FILL_OK if status == "OK"
+                else FILL_ALERTA if status == "ALERTA"
+                else FILL_CRITICO if status == "CRITICO"
+                else FILL_REDUCAO
+            )
 
             for col_idx, field in enumerate(FIELD_MAP, start=1):
                 value = row.get(field, "")
@@ -102,7 +109,7 @@ def export_excel(rows: list, output_path: str) -> bool:
                     cell.number_format = '#,##0.0000'
 
         # Larguras de coluna
-        col_widths = [30, 20, 28, 18, 35, 10, 18, 18, 18, 18, 12, 12, 42, 22]
+        col_widths = [30, 12, 20, 28, 35, 10, 18, 18, 18, 18, 12, 12, 22]
         for col_idx, width in enumerate(col_widths, start=1):
             ws.column_dimensions[get_column_letter(col_idx)].width = width
 
@@ -138,10 +145,16 @@ def _write_summary_sheet(ws, rows: list):
     for row_idx, (status, qty) in enumerate(
         [("OK", counts.get("OK", 0)),
          ("ALERTA", counts.get("ALERTA", 0)),
-         ("CRITICO", counts.get("CRITICO", 0))],
+         ("CRITICO", counts.get("CRITICO", 0)),
+         ("REDUCAO", counts.get("REDUCAO", 0))],
         start=3
     ):
-        fill = FILL_OK if status == "OK" else FILL_ALERTA if status == "ALERTA" else FILL_CRITICO
+        fill = (
+            FILL_OK if status == "OK"
+            else FILL_ALERTA if status == "ALERTA"
+            else FILL_CRITICO if status == "CRITICO"
+            else FILL_REDUCAO
+        )
         c_status = ws.cell(row=row_idx, column=1, value=status)
         c_qty = ws.cell(row=row_idx, column=2, value=qty)
         c_status.fill = fill
@@ -187,19 +200,18 @@ def export_pdf(rows: list, output_path: str) -> bool:
 
         # Cabeçalho da tabela
         col_defs = [
-            ("Arquivo", 34),
+            ("Arquivo", 28),
+            ("N. Nota", 14),
             ("CNPJ", 28),
             ("Posto Ref.", 34),
-            ("Código", 18),
             ("Descrição", 32),
             ("Qtd", 14),
             ("V.Total", 18),
             ("P.XML", 18),
             ("P.API", 18),
-            ("Dif.Abs", 16),
+            ("Dif.", 16),
             ("Dif.%", 14),
             ("Status", 14),
-            ("Motivo", 52),
         ]
 
         pdf.set_font("Helvetica", "B", 7)
@@ -219,14 +231,16 @@ def export_pdf(rows: list, output_path: str) -> bool:
                 pdf.set_fill_color(198, 239, 206)
             elif status == "ALERTA":
                 pdf.set_fill_color(255, 235, 156)
+            elif status == "REDUCAO":
+                pdf.set_fill_color(214, 234, 248)
             else:
                 pdf.set_fill_color(255, 199, 206)
 
             values = [
-                _truncate(str(row.get("nome_arquivo", "")), 24),
+                _truncate(str(row.get("nome_arquivo", "")), 20),
+                str(row.get("numero_nota", "")),
                 format_cnpj(row.get("cnpj_fornecedor", "")),
                 _truncate(str(row.get("posto_referencia", "")), 26),
-                str(row.get("codigo_produto", "")),
                 _truncate(str(row.get("descricao", "")), 24),
                 f"{row.get('qtd', 0):.2f}",
                 f"{row.get('valor_total', 0):.4f}",
@@ -235,7 +249,6 @@ def export_pdf(rows: list, output_path: str) -> bool:
                 f"{row.get('diff_abs', 0):.4f}",
                 f"{row.get('diff_pct', 0):.2f}%",
                 status,
-                _truncate(str(row.get("motivo", "")), 42),
             ]
 
             for (_, width), value in zip(col_defs, values):
@@ -253,4 +266,8 @@ def export_pdf(rows: list, output_path: str) -> bool:
 
 def _truncate(text: str, max_len: int) -> str:
     """Trunca texto para caber na célula do PDF."""
-    return text if len(text) <= max_len else text[:max_len - 1] + "…"
+    if len(text) <= max_len:
+        return text
+    if max_len <= 3:
+        return text[:max_len]
+    return text[:max_len - 3] + "..."

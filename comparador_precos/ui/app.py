@@ -10,7 +10,8 @@ import tkinter as tk
 import customtkinter as ctk
 from core.database import (
     upsert_config_fornecedor, list_config_fornecedores, delete_config_fornecedor,
-    list_resultados, clear_resultados, insert_resultado, list_cache_precos_detalhes
+    list_resultados, clear_resultados, insert_resultado, list_cache_precos_detalhes,
+    get_app_config, set_app_config,
 )
 from core.api_service import fetch_and_cache_prices, get_price_from_cache
 from core.xml_processor import iter_xml_files, parse_nfe_file
@@ -28,6 +29,7 @@ STATUS_COLORS = {
     "OK": "#2ecc71",
     "ALERTA": "#f39c12",
     "CRITICO": "#e74c3c",
+    "REDUCAO": "#5dade2",
     "INFO": "#3498db",
     "ERRO": "#c0392b",
 }
@@ -43,6 +45,8 @@ class ComparadorApp(ctk.CTk):
         self._api_url = tk.StringVar(value="")
         self._api_token = tk.StringVar(value="")
         self._processing = False
+        self.protocol("WM_DELETE_WINDOW", self._on_close)
+        self._load_app_config()
         self._build_ui()
 
     # ─── Build UI ────────────────────────────────────────────────────────────
@@ -57,6 +61,16 @@ class ComparadorApp(ctk.CTk):
 
         self._build_processamento_tab(self.tabview.tab("Processamento"))
         self._build_admin_tab(self.tabview.tab("Admin Config"))
+
+    def _load_app_config(self):
+        """Carrega configurações persistidas da aplicação."""
+        self._api_url.set(get_app_config("api_url", ""))
+        self._api_token.set(get_app_config("api_token", ""))
+
+    def _save_app_config(self):
+        """Persiste configurações básicas da aplicação."""
+        set_app_config("api_url", self._api_url.get().strip())
+        set_app_config("api_token", self._api_token.get().strip())
 
     # ─── Aba Processamento ────────────────────────────────────────────────────
 
@@ -160,9 +174,9 @@ class ComparadorApp(ctk.CTk):
         import tkinter.ttk as ttk
 
         columns = (
-            "arquivo", "cnpj", "posto_ref", "codigo", "descricao",
+            "arquivo", "numero_nota", "cnpj", "posto_ref", "descricao",
             "qtd", "v_total", "p_xml", "p_api",
-            "dif_abs", "dif_pct", "status", "motivo", "data"
+            "dif_abs", "dif_pct", "status", "data"
         )
 
         style = ttk.Style()
@@ -182,9 +196,9 @@ class ComparadorApp(ctk.CTk):
 
         col_config = [
             ("arquivo", "Arquivo", 180),
+            ("numero_nota", "N. Nota", 90),
             ("cnpj", "CNPJ Fornecedor", 130),
             ("posto_ref", "Posto Referência", 220),
-            ("codigo", "Código", 100),
             ("descricao", "Descrição", 200),
             ("qtd", "Qtd", 70),
             ("v_total", "Val. Total", 100),
@@ -193,7 +207,6 @@ class ComparadorApp(ctk.CTk):
             ("dif_abs", "Dif. Abs.", 90),
             ("dif_pct", "Dif. %", 70),
             ("status", "Status", 80),
-            ("motivo", "Motivo", 320),
             ("data", "Data", 130),
         ]
 
@@ -205,6 +218,7 @@ class ComparadorApp(ctk.CTk):
         tree.tag_configure("OK", background="#d4edda")
         tree.tag_configure("ALERTA", background="#fff3cd")
         tree.tag_configure("CRITICO", background="#f8d7da")
+        tree.tag_configure("REDUCAO", background="#d6eaf8")
 
         vsb.pack(side="right", fill="y")
         hsb.pack(side="bottom", fill="x")
@@ -319,6 +333,7 @@ class ComparadorApp(ctk.CTk):
         if not url:
             messagebox.showwarning("Atenção", "Informe a URL da API antes de atualizar o cache.")
             return
+        self._save_app_config()
         self._set_status("Atualizando cache de preços da API…", "INFO")
         self._set_ui_busy(True)
 
@@ -397,6 +412,7 @@ class ComparadorApp(ctk.CTk):
                         emitente_nome=nfe_data.get("emitente_nome", ""),
                         emitente_cidade=nfe_data.get("emitente_cidade", ""),
                         emitente_uf=nfe_data.get("emitente_uf", ""),
+                        numero_nota=nfe_data.get("numero_nota", ""),
                         tipo_combustivel=tipo_combustivel,
                     )
 
@@ -542,6 +558,11 @@ class ComparadorApp(ctk.CTk):
             delete_config_fornecedor(record_id)
             self._load_configs_to_tree()
 
+    def _on_close(self):
+        """Persiste configurações e encerra a aplicação."""
+        self._save_app_config()
+        self.destroy()
+
     # ─── Helpers de UI ────────────────────────────────────────────────────────
 
     def _set_status(self, message: str, level: str = "INFO"):
@@ -570,9 +591,9 @@ class ComparadorApp(ctk.CTk):
         for row in rows:
             values = (
                 row.get("nome_arquivo", ""),
+                row.get("numero_nota", ""),
                 format_cnpj(row.get("cnpj_fornecedor", "")),
                 row.get("posto_referencia", ""),
-                row.get("codigo_produto", ""),
                 row.get("descricao", ""),
                 f"{row.get('qtd', 0):.4f}",
                 f"R$ {row.get('valor_total', 0):,.4f}",
@@ -581,7 +602,6 @@ class ComparadorApp(ctk.CTk):
                 f"R$ {row.get('diff_abs', 0):,.4f}",
                 f"{row.get('diff_pct', 0):.2f}%",
                 row.get("status", ""),
-                row.get("motivo", ""),
                 row.get("data_processamento", ""),
             )
             tag = row.get("status", "OK")
