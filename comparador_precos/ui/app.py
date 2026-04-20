@@ -162,7 +162,7 @@ class ComparadorApp(ctk.CTk):
         columns = (
             "arquivo", "cnpj", "codigo", "descricao",
             "qtd", "v_total", "p_xml", "p_api",
-            "dif_abs", "dif_pct", "status", "data"
+            "dif_abs", "dif_pct", "status", "posto_ref", "motivo", "data"
         )
 
         style = ttk.Style()
@@ -192,6 +192,8 @@ class ComparadorApp(ctk.CTk):
             ("dif_abs", "Dif. Abs.", 90),
             ("dif_pct", "Dif. %", 70),
             ("status", "Status", 80),
+            ("posto_ref", "Posto Referência", 220),
+            ("motivo", "Motivo", 320),
             ("data", "Data", 130),
         ]
 
@@ -578,6 +580,8 @@ class ComparadorApp(ctk.CTk):
                 f"R$ {row.get('diff_abs', 0):,.4f}",
                 f"{row.get('diff_pct', 0):.2f}%",
                 row.get("status", ""),
+                row.get("posto_referencia", ""),
+                row.get("motivo", ""),
                 row.get("data_processamento", ""),
             )
             tag = row.get("status", "OK")

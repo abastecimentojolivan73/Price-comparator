@@ -35,13 +35,13 @@ THIN_BORDER = Border(
 HEADERS = [
     "Arquivo", "CNPJ Fornecedor", "Cód. Produto", "Descrição",
     "Qtd", "Valor Total (R$)", "Preço XML (R$)", "Preço API (R$)",
-    "Dif. Abs. (R$)", "Dif. %", "Status", "Data Processamento"
+    "Dif. Abs. (R$)", "Dif. %", "Status", "Posto Referência", "Motivo", "Data Processamento"
 ]
 
 FIELD_MAP = [
     "nome_arquivo", "cnpj_fornecedor", "codigo_produto", "descricao",
     "qtd", "valor_total", "preco_xml", "preco_api",
-    "diff_abs", "diff_pct", "status", "data_processamento"
+    "diff_abs", "diff_pct", "status", "posto_referencia", "motivo", "data_processamento"
 ]
 
 
@@ -62,7 +62,7 @@ def export_excel(rows: list, output_path: str) -> bool:
         ws.title = "Comparação de Preços"
 
         # Linha de título
-        ws.merge_cells("A1:L1")
+        ws.merge_cells("A1:N1")
         title_cell = ws["A1"]
         title_cell.value = f"Relatório de Comparação de Preços — Gerado em {datetime.now().strftime('%d/%m/%Y %H:%M')}"
         title_cell.font = Font(bold=True, color=COLOR_WHITE, size=12)
@@ -100,7 +100,7 @@ def export_excel(rows: list, output_path: str) -> bool:
                     cell.number_format = '#,##0.0000'
 
         # Larguras de coluna
-        col_widths = [30, 20, 18, 35, 10, 18, 18, 18, 18, 12, 12, 22]
+        col_widths = [30, 20, 18, 35, 10, 18, 18, 18, 18, 12, 12, 28, 42, 22]
         for col_idx, width in enumerate(col_widths, start=1):
             ws.column_dimensions[get_column_letter(col_idx)].width = width
 
@@ -185,17 +185,19 @@ def export_pdf(rows: list, output_path: str) -> bool:
 
         # Cabeçalho da tabela
         col_defs = [
-            ("Arquivo", 45),
+            ("Arquivo", 34),
             ("CNPJ", 28),
-            ("Código", 22),
-            ("Descrição", 48),
+            ("Código", 18),
+            ("Descrição", 32),
             ("Qtd", 14),
-            ("V.Total", 22),
-            ("P.XML", 22),
-            ("P.API", 22),
-            ("Dif.Abs", 20),
+            ("V.Total", 18),
+            ("P.XML", 18),
+            ("P.API", 18),
+            ("Dif.Abs", 16),
             ("Dif.%", 14),
-            ("Status", 16),
+            ("Status", 14),
+            ("Posto Ref.", 34),
+            ("Motivo", 52),
         ]
 
         pdf.set_font("Helvetica", "B", 7)
@@ -219,10 +221,10 @@ def export_pdf(rows: list, output_path: str) -> bool:
                 pdf.set_fill_color(255, 199, 206)
 
             values = [
-                _truncate(str(row.get("nome_arquivo", "")), 28),
+                _truncate(str(row.get("nome_arquivo", "")), 24),
                 str(row.get("cnpj_fornecedor", "")),
                 str(row.get("codigo_produto", "")),
-                _truncate(str(row.get("descricao", "")), 30),
+                _truncate(str(row.get("descricao", "")), 24),
                 f"{row.get('qtd', 0):.2f}",
                 f"{row.get('valor_total', 0):.4f}",
                 f"{row.get('preco_xml', 0):.4f}",
@@ -230,6 +232,8 @@ def export_pdf(rows: list, output_path: str) -> bool:
                 f"{row.get('diff_abs', 0):.4f}",
                 f"{row.get('diff_pct', 0):.2f}%",
                 status,
+                _truncate(str(row.get("posto_referencia", "")), 26),
+                _truncate(str(row.get("motivo", "")), 42),
             ]
 
             for (_, width), value in zip(col_defs, values):
