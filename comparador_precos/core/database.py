@@ -548,3 +548,22 @@ def clear_resultados() -> bool:
     except Exception as e:
         logger.error("Erro ao limpar resultados: %s", e)
         return False
+
+
+def delete_resultados_by_arquivos(nomes_arquivo: list[str]) -> bool:
+    """Remove resultados anteriores associados aos XMLs informados."""
+    arquivos = [str(nome).strip() for nome in nomes_arquivo if str(nome).strip()]
+    if not arquivos:
+        return True
+
+    placeholders = ", ".join("?" for _ in arquivos)
+    try:
+        with get_connection() as conn:
+            conn.execute(
+                f"DELETE FROM resultados WHERE nome_arquivo IN ({placeholders})",
+                arquivos,
+            )
+        return True
+    except Exception as e:
+        logger.error("Erro ao excluir resultados por arquivo %s: %s", arquivos, e)
+        return False

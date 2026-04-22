@@ -11,6 +11,7 @@ import customtkinter as ctk
 from core.database import (
     upsert_config_fornecedor, list_config_fornecedores, delete_config_fornecedor,
     list_resultados, clear_resultados, insert_resultado, list_cache_precos_detalhes,
+    delete_resultados_by_arquivos,
     get_app_config, set_app_config,
     add_ncm_sh_ignorado, list_ncm_sh_ignorados, delete_ncm_sh_ignorado, is_ncm_sh_ignorado,
 )
@@ -449,6 +450,9 @@ class ComparadorApp(ctk.CTk):
                 return
 
             data_proc = now_str()
+            processed_filenames = [os.path.basename(filepath) for filepath in xml_files]
+            if not delete_resultados_by_arquivos(processed_filenames):
+                errors.append("Falha ao limpar resultados anteriores dos XMLs reprocessados.")
             cache_detalhado = {
                 "diesel": list_cache_precos_detalhes("diesel"),
                 "arla": list_cache_precos_detalhes("arla"),
@@ -512,6 +516,7 @@ class ComparadorApp(ctk.CTk):
             def done():
                 self._set_ui_busy(False)
                 self._processing = False
+                self._remove_result_rows_from_tree(processed_filenames)
                 for row in reversed(results):
                     self._insert_result_row_in_tree(row, prepend=True)
                 msg = f"Processamento concluído: {len(results)} item(s) em {len(xml_files)} arquivo(s)."
@@ -711,6 +716,16 @@ class ComparadorApp(ctk.CTk):
         tag = row.get("status", "OK")
         index = 0 if prepend else "end"
         self._tree.insert("", index, values=values, tags=(tag,))
+
+    def _remove_result_rows_from_tree(self, nomes_arquivo: list[str]):
+        arquivos = {str(nome).strip() for nome in nomes_arquivo if str(nome).strip()}
+        if not arquivos:
+            return
+
+        for item_id in self._tree.get_children():
+            values = self._tree.item(item_id, "values")
+            if values and values[0] in arquivos:
+                self._tree.delete(item_id)
 
     def _load_configs_to_tree(self):
         """Recarrega a lista de configurações de fornecedores."""
