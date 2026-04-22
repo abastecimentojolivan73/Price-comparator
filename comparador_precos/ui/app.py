@@ -512,7 +512,8 @@ class ComparadorApp(ctk.CTk):
             def done():
                 self._set_ui_busy(False)
                 self._processing = False
-                self._load_results_to_tree()
+                for row in reversed(results):
+                    self._insert_result_row_in_tree(row, prepend=True)
                 msg = f"Processamento concluído: {len(results)} item(s) em {len(xml_files)} arquivo(s)."
                 if errors:
                     msg += f" {len(errors)} aviso(s) — veja o log."
@@ -689,23 +690,27 @@ class ComparadorApp(ctk.CTk):
 
         rows = list_resultados()
         for row in rows:
-            values = (
-                row.get("nome_arquivo", ""),
-                row.get("numero_nota", ""),
-                format_cnpj(row.get("cnpj_fornecedor", "")),
-                row.get("posto_referencia", ""),
-                row.get("descricao", ""),
-                f"{row.get('qtd', 0):.4f}",
-                f"R$ {row.get('valor_total', 0):,.4f}",
-                f"R$ {row.get('preco_xml', 0):,.4f}",
-                f"R$ {row.get('preco_api', 0):,.4f}",
-                f"R$ {row.get('diff_abs', 0):,.4f}",
-                f"{row.get('diff_pct', 0):.2f}%",
-                row.get("status", ""),
-                row.get("data_processamento", ""),
-            )
-            tag = row.get("status", "OK")
-            self._tree.insert("", "end", values=values, tags=(tag,))
+            self._insert_result_row_in_tree(row)
+
+    def _insert_result_row_in_tree(self, row: dict, prepend: bool = False):
+        values = (
+            row.get("nome_arquivo", ""),
+            row.get("numero_nota", ""),
+            format_cnpj(row.get("cnpj_fornecedor", "")),
+            row.get("posto_referencia", ""),
+            row.get("descricao", ""),
+            f"{row.get('qtd', 0):.4f}",
+            f"R$ {row.get('valor_total', 0):,.4f}",
+            f"R$ {row.get('preco_xml', 0):,.4f}",
+            f"R$ {row.get('preco_api', 0):,.4f}",
+            f"R$ {row.get('diff_abs', 0):,.4f}",
+            f"{row.get('diff_pct', 0):.2f}%",
+            row.get("status", ""),
+            row.get("data_processamento", ""),
+        )
+        tag = row.get("status", "OK")
+        index = 0 if prepend else "end"
+        self._tree.insert("", index, values=values, tags=(tag,))
 
     def _load_configs_to_tree(self):
         """Recarrega a lista de configurações de fornecedores."""

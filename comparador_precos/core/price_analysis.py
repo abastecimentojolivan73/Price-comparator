@@ -419,9 +419,10 @@ def _normalize_fuel_type(tipo: str) -> str:
 
 def _infer_fuel_type(codigo_produto: str, descricao: str) -> str:
     haystack = _normalize_text(f"{codigo_produto} {descricao}")
+    compact_haystack = haystack.replace(" ", "")
     if "ARLA" in haystack:
         return "arla"
-    if "DIESEL" in haystack or "S10" in haystack or "S500" in haystack:
+    if "DIESEL" in haystack or "S10" in compact_haystack or "S500" in compact_haystack:
         return "diesel"
     return ""
 

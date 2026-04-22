@@ -11,6 +11,7 @@ if BASE_DIR not in sys.path:
 from core.price_analysis import (
     analyze_api_prices,
     compare_note_with_api_cache,
+    infer_fuel_type,
     normalize_api_payload,
 )
 from core.xml_processor import parse_nfe_file
@@ -177,6 +178,11 @@ class PriceAnalysisTests(unittest.TestCase):
         self.assertEqual(comparison["status"], "REDUCAO")
         self.assertEqual(comparison["posto"], "POSTO MARAJO APARECIDA DE GOIANIA")
         self.assertAlmostEqual(comparison["preco_api"], 7.0, places=2)
+
+    def test_infer_fuel_type_accepts_abbreviated_s10_product(self):
+        inferred = infer_fuel_type("OD B S-10 ORIGINAL", "")
+
+        self.assertEqual(inferred, "diesel")
 
     @patch(
         "core.comparator.get_tolerancia",
