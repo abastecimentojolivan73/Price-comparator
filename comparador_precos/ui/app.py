@@ -4,6 +4,8 @@ Abas: Processamento e Admin Config.
 Toda operação pesada roda em thread separada para não bloquear a mainloop.
 """
 import os
+import subprocess
+import sys
 import threading
 from tkinter import filedialog, messagebox
 import tkinter as tk
@@ -11,7 +13,6 @@ import customtkinter as ctk
 from core.database import (
     upsert_config_fornecedor, list_config_fornecedores, delete_config_fornecedor,
     list_resultados, clear_resultados, insert_resultado, list_cache_precos_detalhes,
-    delete_resultados_by_arquivos,
     get_app_config, set_app_config,
     add_ncm_sh_ignorado, list_ncm_sh_ignorados, delete_ncm_sh_ignorado, is_ncm_sh_ignorado,
 )
@@ -225,6 +226,7 @@ class ComparadorApp(ctk.CTk):
         vsb.pack(side="right", fill="y")
         hsb.pack(side="bottom", fill="x")
         tree.pack(fill="both", expand=True)
+        tree.bind("<Double-1>", self._on_result_double_click)
 
         return tree
 
@@ -450,9 +452,8 @@ class ComparadorApp(ctk.CTk):
                 return
 
             data_proc = now_str()
-            processed_filenames = [os.path.basename(filepath) for filepath in xml_files]
-            if not delete_resultados_by_arquivos(processed_filenames):
-                errors.append("Falha ao limpar resultados anteriores dos XMLs reprocessados.")
+            if not clear_resultados():
+                errors.append("Falha ao limpar resultados anteriores antes do processamento.")
             cache_detalhado = {
                 "diesel": list_cache_precos_detalhes("diesel"),
                 "arla": list_cache_precos_detalhes("arla"),
@@ -516,9 +517,7 @@ class ComparadorApp(ctk.CTk):
             def done():
                 self._set_ui_busy(False)
                 self._processing = False
-                self._remove_result_rows_from_tree(processed_filenames)
-                for row in reversed(results):
-                    self._insert_result_row_in_tree(row, prepend=True)
+                self._load_results_to_tree()
                 msg = f"Processamento concluído: {len(results)} item(s) em {len(xml_files)} arquivo(s)."
                 if errors:
                     msg += f" {len(errors)} aviso(s) — veja o log."
@@ -717,15 +716,55 @@ class ComparadorApp(ctk.CTk):
         index = 0 if prepend else "end"
         self._tree.insert("", index, values=values, tags=(tag,))
 
-    def _remove_result_rows_from_tree(self, nomes_arquivo: list[str]):
-        arquivos = {str(nome).strip() for nome in nomes_arquivo if str(nome).strip()}
-        if not arquivos:
+    def _on_result_double_click(self, _event):
+        selected_item = self._tree.focus()
+        if not selected_item:
             return
 
-        for item_id in self._tree.get_children():
-            values = self._tree.item(item_id, "values")
-            if values and values[0] in arquivos:
-                self._tree.delete(item_id)
+        values = self._tree.item(selected_item, "values")
+        if not values:
+            return
+
+        filename = values[0]
+        filepath = self._resolve_result_file_path(filename)
+        if not filepath:
+            messagebox.showwarning(
+                "Arquivo não encontrado",
+                f"Não foi possível localizar o XML '{filename}' na pasta selecionada.",
+            )
+            return
+
+        try:
+            self._open_file_with_default_app(filepath)
+        except Exception as exc:
+            logger.error("Erro ao abrir XML %s: %s", filepath, exc)
+            messagebox.showerror(
+                "Erro ao abrir arquivo",
+                f"Não foi possível abrir o XML:\n{filepath}\n\nDetalhe: {exc}",
+            )
+
+    def _resolve_result_file_path(self, filename: str) -> str | None:
+        folder = self._selected_folder.get().strip()
+        if not folder or not os.path.isdir(folder):
+            return None
+
+        direct_path = os.path.join(folder, filename)
+        if os.path.isfile(direct_path):
+            return direct_path
+
+        for root, _dirs, files in os.walk(folder):
+            if filename in files:
+                return os.path.join(root, filename)
+        return None
+
+    def _open_file_with_default_app(self, filepath: str):
+        if sys.platform.startswith("win"):
+            os.startfile(filepath)
+            return
+        if sys.platform == "darwin":
+            subprocess.Popen(["open", filepath])
+            return
+        subprocess.Popen(["xdg-open", filepath])
 
     def _load_configs_to_tree(self):
         """Recarrega a lista de configurações de fornecedores."""
